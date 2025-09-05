@@ -283,7 +283,7 @@ useEffect(() => {
 
   const handleNextWord = async () => {
 
-    const response = await fetch(`http://51.77.194.30:8082/game/score?gameId=${currentGame.id}&playerId=${contestants[currentContestantIndex].id}`, {
+    const response = await fetch(`https://51.77.194.30:8082/game/score?gameId=${currentGame.id}&playerId=${contestants[currentContestantIndex].id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

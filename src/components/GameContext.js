@@ -249,7 +249,7 @@ export const GameProvider = ({ children }) => {
     try {
       console.log('Fetching full game data for:', gameId);
       
-      const response = await fetch(`http://51.77.194.30:8082/game/${gameId}`, {
+      const response = await fetch(`https://51.77.194.30:8082/game/${gameId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

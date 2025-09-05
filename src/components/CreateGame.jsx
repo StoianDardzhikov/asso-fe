@@ -39,7 +39,7 @@ const CreateGame = ({ onBack, onGameCreated }) => {
       console.log('Sending game config to backend:', gameConfig);
 
       // API call to create game
-      const response = await fetch('http://51.77.194.30:8082/game', {
+      const response = await fetch('https://51.77.194.30:8082/game', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

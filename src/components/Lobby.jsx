@@ -29,7 +29,7 @@ const Lobby = ({ onBack, onStartGame }) => {
     try {
       console.log('Fetching game data for game:', user.gameId);
       
-      const response = await fetch(`http://51.77.194.30:8082/game/${user.gameId}`, {
+      const response = await fetch(`https://51.77.194.30:8082/game/${user.gameId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ const Lobby = ({ onBack, onStartGame }) => {
     setIsStarting(true);
     
     try {
-      const response = await fetch(`http://51.77.194.30:8082/game/start?gameId=${user.gameId}`, {
+      const response = await fetch(`https://51.77.194.30:8082/game/start?gameId=${user.gameId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

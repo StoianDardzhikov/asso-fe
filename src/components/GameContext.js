@@ -189,7 +189,7 @@ export const GameProvider = ({ children }) => {
     }
 
     try {
-      const wsUrl = `ws://51.77.194.30:8082/ws`;
+      const wsUrl = `ws://vurkolaci.fun/api/ws`;
       console.log('Connecting to WebSocket:', wsUrl);
       
       wsRef.current = new WebSocket(wsUrl);
@@ -249,7 +249,7 @@ export const GameProvider = ({ children }) => {
     try {
       console.log('Fetching full game data for:', gameId);
       
-      const response = await fetch(`https://51.77.194.30:8082/game/${gameId}`, {
+      const response = await fetch(`https://vurkolaci.fun/api/game/${gameId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

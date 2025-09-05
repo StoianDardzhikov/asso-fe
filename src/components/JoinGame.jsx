@@ -25,7 +25,7 @@ const JoinGame = ({ onBack, onGameJoined }) => {
       console.log('Fetching available games from API...');
       
       // Real API call to get available games
-      const response = await fetch('https://51.77.194.30:8082/game', {
+      const response = await fetch('https://vurkolaci.fun/api/game', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

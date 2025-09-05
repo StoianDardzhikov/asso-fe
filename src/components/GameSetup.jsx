@@ -48,7 +48,7 @@ const GameSetup = ({ onBack, onSetupComplete }) => {
       console.log('Submitting game setup:', setupData);
 
       // API call to save the words for each category
-      const response = await fetch(`https://51.77.194.30:8082/game/join?playerName=${user.name}&gameId=${user.gameId}`, {
+      const response = await fetch(`https://vurkolaci.fun/api/game/join?playerName=${user.name}&gameId=${user.gameId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

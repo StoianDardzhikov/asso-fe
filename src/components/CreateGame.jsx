@@ -150,7 +150,7 @@ const CreateGame = ({ onBack, onGameCreated }) => {
         {/* Players Per Team Section */}
         <div className="mb-6 sm:mb-8">
           <label className="block text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
-            👥 Игрока на отбор
+            👥 Играча на отбор
           </label>
           <input
             type="number"

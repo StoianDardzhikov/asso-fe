@@ -36,9 +36,8 @@ const CreateGame = ({ onBack, onGameCreated }) => {
         playersPerTeam: playersPerTeam
       };
 
-      console.log('Sending game config to backend:', gameConfig);
+      console.log('Изпращане на конфигурацията към бекенда:', gameConfig);
 
-      // API call to create game
       const response = await fetch('https://vurkolaci.fun/api/game', {
         method: 'POST',
         headers: {
@@ -49,32 +48,27 @@ const CreateGame = ({ onBack, onGameCreated }) => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP грешка! статус: ${response.status}`);
       }
 
       const result = await response.json();
 
       console.log(result);
+      console.log('Играта беше създадена успешно:', result);
       
-      console.log('Game created successfully:', result);
-      
-      // Store user info globally and game creation data
       const gameData = {
         categories: categories.filter(cat => cat.trim() !== ''),
         playersPerTeam: playersPerTeam
       };
       
       setUserAsHost(creatorName.trim(), result.gameId || result.id || 'DEMO123', gameData);
-      
-      // Redirect to game setup instead of lobby
       onGameCreated();
       
     } catch (error) {
-      console.error('Error creating game:', error);
+      console.error('Грешка при създаване на игра:', error);
       
-      // For demo purposes, simulate successful creation
       const mockGameId = 'DEMO' + Math.random().toString(36).substr(2, 6).toUpperCase();
-      console.log('Demo mode: Game created with ID:', mockGameId);
+      console.log('Демо режим: Играта беше създадена с ID:', mockGameId);
       
       const gameData = {
         categories: categories.filter(cat => cat.trim() !== ''),
@@ -98,20 +92,20 @@ const CreateGame = ({ onBack, onGameCreated }) => {
       <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 lg:p-8 max-w-sm sm:max-w-md w-full mx-2">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Create Game</h1>
-          <p className="text-gray-600 text-sm sm:text-base">Set up your Associations game</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Създай Игра</h1>
+          <p className="text-gray-600 text-sm sm:text-base">Настрой своята игра Асоциации</p>
         </div>
 
         {/* Creator Name Section */}
         <div className="mb-6 sm:mb-8">
           <label className="block text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
-            👤 Your Name
+            👤 Твоето име
           </label>
           <input
             type="text"
             value={creatorName}
             onChange={(e) => setCreatorName(e.target.value)}
-            placeholder="Enter your name..."
+            placeholder="Въведи своето име..."
             className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-sm sm:text-base"
           />
         </div>
@@ -119,7 +113,7 @@ const CreateGame = ({ onBack, onGameCreated }) => {
         {/* Categories Section */}
         <div className="mb-6 sm:mb-8">
           <label className="block text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
-            📚 Categories
+            📚 Категории
           </label>
           <div className="space-y-2 sm:space-y-3">
             {categories.map((category, index) => (
@@ -128,7 +122,7 @@ const CreateGame = ({ onBack, onGameCreated }) => {
                   type="text"
                   value={category}
                   onChange={(e) => updateCategory(index, e.target.value)}
-                  placeholder={`Category ${index + 1}`}
+                  placeholder={`Категория ${index + 1}`}
                   className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-sm sm:text-base"
                 />
                 {categories.length > 1 && (
@@ -149,14 +143,14 @@ const CreateGame = ({ onBack, onGameCreated }) => {
             className="mt-2 sm:mt-3 w-full py-2 sm:py-3 px-3 sm:px-4 border-2 border-dashed border-gray-300 rounded-lg sm:rounded-xl text-gray-600 hover:border-purple-500 hover:text-purple-600 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base touch-manipulation"
           >
             <span className="text-lg">+</span>
-            <span>Add Category</span>
+            <span>Добави категория</span>
           </button>
         </div>
 
         {/* Players Per Team Section */}
         <div className="mb-6 sm:mb-8">
           <label className="block text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
-            👥 Players Per Team
+            👥 Игрока на отбор
           </label>
           <input
             type="number"
@@ -182,10 +176,10 @@ const CreateGame = ({ onBack, onGameCreated }) => {
             {isCreating ? (
               <div className="flex items-center justify-center space-x-2">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Creating Game...</span>
+                <span>Създавам игра...</span>
               </div>
             ) : (
-              '🚀 Create Game'
+              '🚀 Създай Игра'
             )}
           </button>
           
@@ -193,7 +187,7 @@ const CreateGame = ({ onBack, onGameCreated }) => {
             onClick={onBack}
             className="w-full py-2 sm:py-3 px-4 sm:px-6 rounded-xl sm:rounded-2xl text-base sm:text-lg font-medium bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation"
           >
-            ← Back to Menu
+            ← Обратно към менюто
           </button>
         </div>
       </div>

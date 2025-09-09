@@ -11,7 +11,7 @@ const Game = ({ onBack }) => {
 
   // Game state
   const [gameState, setGameState] = useState('waiting'); // 'waiting', 'playing', 'finished'
-  const [currentRound, setCurrentRound] = useState(1); // 1, 2, 3
+  const [currentRound, setCurrentRound] = useState(0); // 1, 2, 3
   const [contestants, setContestants] = useState([]);
   const [currentContestantIndex, setCurrentContestantIndex] = useState(0);
   const [availableWords, setAvailableWords] = useState([]);
@@ -20,7 +20,7 @@ const Game = ({ onBack }) => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [roundActive, setRoundActive] = useState(false);
   const [wordsUsedInRound, setWordsUsedInRound] = useState(0);
-  const [roundsCompleted, setRoundsCompleted] = useState(0);
+  const [roundsCompleted, setRoundsCompleted] = useState(-1);
   const [isHolding, setIsHolding] = useState(false);
   const [holdStarted, setHoldStarted] = useState(false); // Track when hold begins for timer position
   const [currentWordIndex, setCurrentWordIndex] = useState(0);

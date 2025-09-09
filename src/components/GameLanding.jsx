@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GameLanding = ({ onCreateGame, onJoinGame }) => {
+const GameLanding = ({ onCreateGame, onJoinGame, version = "1.0.1" }) => {
   const handleJoinGame = () => {
     console.log('Натиснат бутон "Присъедини се към игра"');
     onJoinGame();
@@ -12,7 +12,7 @@ const GameLanding = ({ onCreateGame, onJoinGame }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
       <div className="text-center max-w-sm sm:max-w-md w-full">
         {/* Заглавие на играта */}
         <div className="mb-8 sm:mb-12">
@@ -40,6 +40,11 @@ const GameLanding = ({ onCreateGame, onJoinGame }) => {
             Създай игра
           </button>
         </div>
+      </div>
+
+      {/* Version display */}
+      <div className="absolute bottom-4 right-4 text-white/60 text-xs sm:text-sm font-medium">
+        v{version}
       </div>
     </div>
   );

@@ -64,9 +64,9 @@ const Game = ({ onBack }) => {
     setContestants(contestantOrder);
     setAvailableWords([...currentGame.words]);
     setGameState('waiting');
-    setCurrentRound(1);
+    setCurrentRound(0);
     setCurrentContestantIndex(0);
-    setRoundsCompleted(0);
+    setRoundsCompleted(-1);
     
     console.log('Game initialized with contestants:', contestantOrder);
     console.log('Available words:', currentGame.words);

@@ -223,7 +223,16 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    handleWordsExhausted();
+     if (availableWords.length === 0) {
+        console.log(`All contestants completed game round ${currentRound}. Moving to next game round.`);
+        handleWordsExhausted();
+
+        setCurrentRound(prevRound => {
+          const newRound = Math.min(prevRound + 1, 3);
+          console.log(`Moving from game round ${prevRound} to game round ${newRound}`);
+          return newRound;
+        });
+    }
   }, [availableWords])
 
   const handleWordsExhausted = () => {
@@ -273,6 +282,7 @@ useEffect(() => {
         });
 
     }    
+
   };
 
   const endGame = () => {

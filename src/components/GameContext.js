@@ -189,7 +189,7 @@ export const GameProvider = ({ children }) => {
     }
 
     try {
-      const wsUrl = `wss://vurkolaci.fun/api/ws`;
+      const wsUrl = `https://vurkolaci.fun/api/ws`;
       console.log('Connecting to WebSocket:', wsUrl);
       
       wsRef.current = new WebSocket(wsUrl);
@@ -218,7 +218,7 @@ export const GameProvider = ({ children }) => {
       };
 
       wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('WebSocket error:', JSON.stringify(error));
         setWsConnected(false);
       };
 

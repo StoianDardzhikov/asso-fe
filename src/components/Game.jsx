@@ -23,7 +23,8 @@ const Game = ({ onBack }) => {
   const [roundsCompleted, setRoundsCompleted] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
   const [holdStarted, setHoldStarted] = useState(false); // Track when hold begins for timer position
-
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  
   // Refs for timers and state tracking
   const gameTimerRef = useRef(null);
   const wordVisibilityTimerRef = useRef(null);
@@ -83,7 +84,7 @@ const Game = ({ onBack }) => {
     
     let playerIndex = -1;
 
-    while (order.length < teams.length * currentGame.playersPerTeam) {
+    while (order.length < teams.length * currentGame.playersPerTeam + 500) {
         playerIndex += order.length % teams.length === 0 ? 1 : 0;
         let team = teams[currentTeamIndex % teams.length];
 
@@ -179,20 +180,31 @@ useEffect(() => {
     showRandomWord();
   };
 
-  const showRandomWord = (immediateReveal = true) => {
-    if (availableWords.length === 0) {
+  useEffect(() => {
+    console.log(availableWords);
+  }, [availableWords])
+
+    useEffect(() => {
+    console.log("Word index", currentWordIndex);
+  }, [currentWordIndex])
+
+  const showRandomWord = (immediateReveal = true, avalWords = availableWords) => {
+
+   if (avalWords.length === 0) {
       handleWordsExhausted();
       return;
     }
 
-    const randomIndex = Math.floor(Math.random() * availableWords.length);
-    const word = availableWords[randomIndex];
+    const randomIndex = Math.floor(Math.random() * avalWords.length);
+    const word = avalWords[randomIndex];
     
     setCurrentWord(word);
+    setCurrentWordIndex(randomIndex);
     setWordsUsedInRound(prev => prev + 1);
 
+
     // Remove word from available words
-    setAvailableWords(prev => prev.filter((_, index) => index !== randomIndex));
+
 
     if (immediateReveal) {
       // Normal behavior: show word for 1 second
@@ -210,7 +222,24 @@ useEffect(() => {
     }
   };
 
+  useEffect(() => {
+      if (availableWords.length === 0) {
+        console.log(`All contestants completed game round ${currentRound}. Moving to next game round.`);
+        handleWordsExhausted();
+
+        setCurrentRound(prevRound => {
+          const newRound = Math.min(prevRound + 1, 3);
+          console.log(`Moving from game round ${prevRound} to game round ${newRound}`);
+          return newRound;
+        });
+    }
+  }, [availableWords])
+
   const handleWordsExhausted = () => {
+    console.log(availableWords);
+    if (availableWords.length !== 0) {
+      return;
+    }
     if (roundsCompleted < 2) {
       // Refill words and continue
       setAvailableWords([...currentGame.words]);
@@ -253,19 +282,6 @@ useEffect(() => {
         });
 
     }    
-
-  if (availableWords.length === 0) {
-        console.log(`All contestants completed game round ${currentRound}. Moving to next game round.`);
-        handleWordsExhausted();
-
-        setCurrentRound(prevRound => {
-          const newRound = Math.min(prevRound + 1, 3);
-          console.log(`Moving from game round ${prevRound} to game round ${newRound}`);
-          return newRound;
-        });
-      }
-    
-
   };
 
   const endGame = () => {
@@ -295,19 +311,24 @@ useEffect(() => {
       }
 
     if (!roundActive) return;
+
+      console.log(currentWordIndex);
+
+    const newAvalWords =  availableWords.filter((_, index) => index !== currentWordIndex);
+    setAvailableWords(newAvalWords);
     
     if (wordVisibilityTimerRef.current) {
       clearTimeout(wordVisibilityTimerRef.current);
     }
 
-    if (availableWords.length === 0) {
+    if (newAvalWords.length === 0) {
         endContestantRound();
         return;
     }
 
 
     
-    showRandomWord(true);
+    showRandomWord(true, newAvalWords);
   };
 
   const handleSkipWord = () => {

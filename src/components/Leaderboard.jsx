@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useGame } from './GameContext';
 
 const Leaderboard = ({ onBack }) => {
@@ -11,30 +11,24 @@ const Leaderboard = ({ onBack }) => {
     wsConnected
   } = useGame();
 
-  // Color mapping function for Bulgarian color names
   const mapBulgarianColorToHex = (colorName) => {
     const colorMap = {
-      'Зелени': '#22C55E',    // Green
-      'Сини': '#3B82F6',      // Blue
-      'Червени': '#EF4444',   // Red
-      'Оранжеви': '#F97316',  // Orange
-      'Розови': '#EC4899',    // Pink
-      'Бели': '#F8FAFC'       // White (light gray for better visibility)
+      'Зелени': '#22C55E',
+      'Сини': '#3B82F6',
+      'Червени': '#EF4444',
+      'Оранжеви': '#F97316',
+      'Розови': '#EC4899',
+      'Бели': '#F8FAFC'
     };
-    
-    return colorMap[colorName] || '#7C3AED'; // Default to purple if color not found
+    return colorMap[colorName] || '#7C3AED';
   };
 
-  // Get user's team color for background
   const userTeam = currentGame?.teams?.find(team => 
     team.players?.some(player => player.name === user.name)
   );
   const userTeamColor = mapBulgarianColorToHex(userTeam?.color);
 
-  // Get teams data (prefer real-time updates, fallback to current game)
   const teamsData = gameUpdates?.teams || currentGame?.teams || [];
-
-  // Sort teams by points (highest first)
   const sortedTeams = [...teamsData].sort((a, b) => (b.points || 0) - (a.points || 0));
 
   const handleLeaveGame = () => {
@@ -51,26 +45,21 @@ const Leaderboard = ({ onBack }) => {
   };
 
   return (
-    <div 
-      className="min-h-screen flex flex-col relative p-4"
-      style={{ backgroundColor: userTeamColor }}
-    >
+    <div className="min-h-screen flex flex-col relative p-4" style={{ backgroundColor: userTeamColor }}>
       
       {/* Header */}
       <div className="text-center mb-6 pt-8">
-        <h1 className="text-4xl font-bold text-white mb-2">Leaderboard</h1>
+        <h1 className="text-4xl font-bold text-white mb-2">Таблица с резултати</h1>
         <p className="text-white text-lg opacity-90">
           Game ID: <span className="font-mono font-bold">{user.gameId}</span>
         </p>
         <p className="text-white text-sm opacity-75 mt-1">
-          You are: <span className="font-bold">{user.name}</span>
+          Вие сте: <span className="font-bold">{user.name}</span>
         </p>
-        
-        {/* Connection Status */}
         <div className="flex items-center justify-center mt-2">
           <div className={`w-2 h-2 rounded-full mr-2 ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
           <span className="text-white text-xs opacity-75">
-            {wsConnected ? 'Connected' : 'Connecting...'}
+            {wsConnected ? 'Свързани' : 'Свързване...'}
           </span>
         </div>
       </div>
@@ -78,12 +67,11 @@ const Leaderboard = ({ onBack }) => {
       {/* Teams Leaderboard */}
       <div className="flex-1 max-w-2xl mx-auto w-full">
         <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-3xl shadow-2xl p-6">
-          
-          <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">Team Standings</h2>
+          <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">Класиране на отборите</h2>
           
           {sortedTeams.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-600">No team data available</p>
+              <p className="text-gray-600">Няма налични данни за отборите</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -115,21 +103,16 @@ const Leaderboard = ({ onBack }) => {
                         
                         <div>
                           <div className="flex items-center space-x-2 mb-1">
-                            <div 
-                              className="w-4 h-4 rounded-full"
-                              style={{ backgroundColor: teamColor }}
-                            ></div>
+                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: teamColor }}></div>
                             <h3 className="text-lg font-bold text-gray-800">
-                              {team.color} Team
+                              Отбор {team.color}
                             </h3>
                             {isUserTeam && (
                               <span className="bg-yellow-400 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">
-                                YOUR TEAM
+                                ВАШИЯТ ЕКИП
                               </span>
                             )}
                           </div>
-                          
-                          {/* Players */}
                           <div className="flex flex-wrap gap-1">
                             {team.players?.map((player, playerIndex) => (
                               <span 
@@ -152,7 +135,7 @@ const Leaderboard = ({ onBack }) => {
                         <div className="text-3xl font-bold text-gray-800">
                           {team.points || 0}
                         </div>
-                        <div className="text-sm text-gray-600">points</div>
+                        <div className="text-sm text-gray-600">точки</div>
                       </div>
                     </div>
                   </div>
@@ -166,14 +149,12 @@ const Leaderboard = ({ onBack }) => {
       {/* Game Status */}
       <div className="mt-6 text-center">
         <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 text-white">
-          <p className="text-sm mb-2">🎮 Game in Progress</p>
+          <p className="text-sm mb-2">🎮 Играта тече</p>
           <p className="text-xs opacity-75">
-            The host is running the game. Points will update automatically!
+            Водещият управлява играта. Точките се обновяват автоматично!
           </p>
           {wsConnected && (
-            <p className="text-xs opacity-75 mt-1">
-              🔥 Real-time updates active
-            </p>
+            <p className="text-xs opacity-75 mt-1">🔥 Активни са реално-времеви обновления</p>
           )}
         </div>
       </div>
@@ -184,10 +165,9 @@ const Leaderboard = ({ onBack }) => {
           onClick={handleLeaveGame}
           className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl transition-colors"
         >
-          Leave Game
+          Напусни Играта
         </button>
       </div>
-
     </div>
   );
 };

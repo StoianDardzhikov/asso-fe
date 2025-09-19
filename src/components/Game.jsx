@@ -10,7 +10,7 @@ const Game = ({ onBack }) => {
   } = useGame();
 
   // Game state
-  const [gameState, setGameState] = useState('waiting'); // 'waiting', 'playing', 'finished'
+  const [gameState, setGameState] = useState('initializing'); // 'waiting', 'playing', 'finished'
   const [currentRound, setCurrentRound] = useState(0); // 1, 2, 3
   const [contestants, setContestants] = useState([]);
   const [currentContestantIndex, setCurrentContestantIndex] = useState(0);
@@ -223,7 +223,7 @@ useEffect(() => {
   };
 
   useEffect(() => {
-     if (availableWords.length === 0) {
+     if (availableWords.length === 0 && gameState != 'initializing') {
         console.log(`All contestants completed game round ${currentRound}. Moving to next game round.`);
         handleWordsExhausted();
 

@@ -139,7 +139,7 @@ useEffect(() => {
     // Reset the ending flag
     isEndingRoundRef.current = false;
 
-    const duration = getRoundDuration(currentRound);
+    const duration = getRoundDuration(currentRound + 1);
     setTimeLeft(duration);
     setRoundActive(true);
     setGameState('playing');
@@ -240,7 +240,7 @@ useEffect(() => {
     if (availableWords.length !== 0) {
       return;
     }
-    if (roundsCompleted < 2) {
+    if (roundsCompleted < 1) {
       // Refill words and continue
       setAvailableWords([...currentGame.words]);
       setRoundsCompleted(prev => prev + 1);
@@ -343,6 +343,10 @@ useEffect(() => {
         endContestantRound();
         return;
     }
+
+    setTimeLeft(prev => {
+      return prev >= 15 ? prev - 15 : 0;
+    })
     
     showRandomWord(true);
   };
@@ -474,7 +478,7 @@ useEffect(() => {
             >
               <p className="text-2xl font-semibold mb-2">{currentContestant?.name}</p>
               <p className="text-lg opacity-90">Team {currentContestant?.color}</p>
-              <p className="text-sm opacity-75 mt-2">Round {currentRound}/3</p>
+              <p className="text-sm opacity-75 mt-2">Round {currentRound + 1}/3</p>
             </div>
             <button
               onClick={startContestantRound}

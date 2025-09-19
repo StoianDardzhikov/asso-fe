@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GameLanding = ({ onCreateGame, onJoinGame, version = "1.1.0" }) => {
+const GameLanding = ({ onCreateGame, onJoinGame, version = "1.1.1" }) => {
   const handleJoinGame = () => {
     console.log('Натиснат бутон "Присъедини се към игра"');
     onJoinGame();

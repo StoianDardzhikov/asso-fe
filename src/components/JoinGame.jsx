@@ -22,7 +22,7 @@ const JoinGame = ({ onBack, onGameJoined }) => {
       setError(null);
       console.log('Зареждане на наличните игри от API...');
 
-      const response = await fetch('http://51.210.5.252:8082/api/game', {
+      const response = await fetch('http://51.210.5.252:8082/game', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });

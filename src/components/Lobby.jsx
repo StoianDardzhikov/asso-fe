@@ -24,7 +24,7 @@ const Lobby = ({ onBack, onStartGame }) => {
 
   const fetchAndSetGameData = async () => {
     try {
-      const response = await fetch(`https://vurkolaci.fun/api/game/${user.gameId}`, {
+      const response = await fetch(`http://51.210.5.252:8082/api/game/${user.gameId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -50,7 +50,7 @@ const Lobby = ({ onBack, onStartGame }) => {
 
     setIsStarting(true);
     try {
-      const response = await fetch(`https://vurkolaci.fun/api/game/start?gameId=${user.gameId}`, {
+      const response = await fetch(`http://51.210.5.252:8082/api/game/start?gameId=${user.gameId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });

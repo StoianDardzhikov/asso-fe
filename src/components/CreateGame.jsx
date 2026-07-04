@@ -38,7 +38,7 @@ const CreateGame = ({ onBack, onGameCreated }) => {
 
       console.log('Изпращане на конфигурацията към бекенда:', gameConfig);
 
-      const response = await fetch('http://51.210.5.252:8082/api/game', {
+      const response = await fetch('http://51.210.5.252:8082/game', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

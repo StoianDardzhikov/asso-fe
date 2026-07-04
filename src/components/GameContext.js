@@ -189,7 +189,7 @@ export const GameProvider = ({ children }) => {
     }
 
     try {
-      const wsUrl = `http://51.210.5.252:8082/api/ws`;
+      const wsUrl = `http://51.210.5.252:8082/ws`;
       console.log('Connecting to WebSocket:', wsUrl);
       
       wsRef.current = new WebSocket(wsUrl);

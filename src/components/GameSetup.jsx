@@ -48,7 +48,7 @@ const GameSetup = ({ onBack, onSetupComplete }) => {
       console.log('Изпращане на настройки за играта:', setupData);
 
       // API повикване за запазване на думите за всяка категория
-      const response = await fetch(`http://51.210.5.252:8082/api/game/join?playerName=${user.name}&gameId=${user.gameId}`, {
+      const response = await fetch(`http://51.210.5.252:8082/game/join?playerName=${user.name}&gameId=${user.gameId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

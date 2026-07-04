@@ -29,7 +29,7 @@ pipeline {
                     sh 'docker rm asso-fe || true'
 
                     // Run the new Docker container, mapping port 8080 of the container to port 8081 on the host
-                    sh "docker run -d -p 8081:80 --name asso-fe ${env.DOCKER_IMAGE}:${env.BUILD_ID}"
+                    sh "docker run -d -p 8083:80 --name asso-fe ${env.DOCKER_IMAGE}:${env.BUILD_ID}"
                 }
             }
         }

@@ -300,7 +300,7 @@ useEffect(() => {
 
   const handleNextWord = async () => {
 
-    const response = await fetch(`https://vurkolaci.fun/api/game/score?gameId=${currentGame.id}&playerId=${contestants[currentContestantIndex].id}`, {
+    const response = await fetch(`http://51.210.5.252:8082/api/game/score?gameId=${currentGame.id}&playerId=${contestants[currentContestantIndex].id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

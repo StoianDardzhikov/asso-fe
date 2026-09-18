@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from './GameContext';
+import { API_BASE } from '../config';
 
 const GameSetup = ({ onBack, onSetupComplete }) => {
   const { user, currentGame, setCurrentGame, gameCreationData } = useGame();
   const [categoryWords, setCategoryWords] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  // Вземаме категориите от данните за създаване на игра
-  const categories = gameCreationData?.categories || [];
+  // Вземаме категориите от данните за създаване на игра.
+  // useMemo, защото иначе `|| []` връща нов масив при всяко рендиране и
+  // ефектът отдолу се завърта безкрайно.
+  const categories = useMemo(
+    () => gameCreationData?.categories || [],
+    [gameCreationData]
+  );
 
   // Инициализиране на categoryWords при зареждане на компонента
   useEffect(() => {
@@ -38,6 +45,7 @@ const GameSetup = ({ onBack, onSetupComplete }) => {
     if (!isFormValid()) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
       const setupData = {
@@ -48,7 +56,7 @@ const GameSetup = ({ onBack, onSetupComplete }) => {
       console.log('Изпращане на настройки за играта:', setupData);
 
       // API повикване за запазване на думите за всяка категория
-      const response = await fetch(`http://51.210.5.252:8082/game/join?playerName=${user.name}&gameId=${user.gameId}`, {
+      const response = await fetch(`${API_BASE}/game/join?playerName=${encodeURIComponent(user.name)}&gameId=${encodeURIComponent(user.gameId)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -74,17 +82,10 @@ const GameSetup = ({ onBack, onSetupComplete }) => {
       onSetupComplete();
 
     } catch (error) {
+      // Преди тук се симулираше успех - играчът влизаше в лобито, без сървърът
+      // изобщо да знае за него, и накрая не попадаше в нито един отбор.
       console.error('Грешка при настройката на играта:', error);
-      
-      // За демо, симулираме успех
-      console.log('Демо режим: Настройката на играта е завършена');
-      setCurrentGame({
-        ...currentGame,
-        categoryWords: categoryWords,
-        isSetupComplete: true
-      });
-      onSetupComplete();
-      
+      setSubmitError('Неуспешно изпращане на думите. Провери връзката и опитай отново.');
     } finally {
       setIsSubmitting(false);
     }
@@ -181,6 +182,13 @@ const GameSetup = ({ onBack, onSetupComplete }) => {
                   ></div>
                 </div>
               </div>
+
+              {/* Грешка */}
+              {submitError && (
+                <div className="mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-center">
+                  <p className="text-red-600 text-sm font-medium">{submitError}</p>
+                </div>
+              )}
 
               {/* Бутони за действие */}
               <div className="space-y-3">

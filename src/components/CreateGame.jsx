@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useGame } from './GameContext';
+import { API_BASE } from '../config';
 
 const CreateGame = ({ onBack, onGameCreated }) => {
   const [categories, setCategories] = useState(['']);
   const [playersPerTeam, setPlayersPerTeam] = useState(2);
   const [creatorName, setCreatorName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState(null);
 
   const { setUserAsHost } = useGame();
 
@@ -28,6 +30,7 @@ const CreateGame = ({ onBack, onGameCreated }) => {
 
   const handleCreateGame = async () => {
     setIsCreating(true);
+    setCreateError(null);
     
     try {
       const gameConfig = {
@@ -38,7 +41,7 @@ const CreateGame = ({ onBack, onGameCreated }) => {
 
       console.log('Изпращане на конфигурацията към бекенда:', gameConfig);
 
-      const response = await fetch('http://51.210.5.252:8082/game', {
+      const response = await fetch(`${API_BASE}/game`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,23 +64,20 @@ const CreateGame = ({ onBack, onGameCreated }) => {
         playersPerTeam: playersPerTeam
       };
       
-      setUserAsHost(creatorName.trim(), result.gameId || result.id || 'DEMO123', gameData);
+      const gameId = result.gameId ?? result.id;
+      if (gameId === undefined || gameId === null) {
+        throw new Error('Бекендът не върна ID на играта');
+      }
+
+      setUserAsHost(creatorName.trim(), gameId, gameData);
       onGameCreated();
-      
+
     } catch (error) {
+      // Преди се създаваше фалшиво "DEMO" ID - играта изглеждаше създадена,
+      // но никой не можеше да се присъедини към нея.
       console.error('Грешка при създаване на игра:', error);
-      
-      const mockGameId = 'DEMO' + Math.random().toString(36).substr(2, 6).toUpperCase();
-      console.log('Демо режим: Играта беше създадена с ID:', mockGameId);
-      
-      const gameData = {
-        categories: categories.filter(cat => cat.trim() !== ''),
-        playersPerTeam: playersPerTeam
-      };
-      
-      setUserAsHost(creatorName.trim(), mockGameId, gameData);
-      onGameCreated();
-      
+      setCreateError('Неуспешно създаване на игра. Провери връзката и опитай отново.');
+
     } finally {
       setIsCreating(false);
     }
@@ -161,6 +161,13 @@ const CreateGame = ({ onBack, onGameCreated }) => {
             className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-center text-lg sm:text-xl font-bold"
           />
         </div>
+
+        {/* Грешка */}
+        {createError && (
+          <div className="mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-center">
+            <p className="text-red-600 text-sm font-medium">{createError}</p>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="space-y-2 sm:space-y-3">

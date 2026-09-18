@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from './GameContext';
+import { API_BASE } from '../config';
 
 const Game = ({ onBack }) => {
   const { 
@@ -30,6 +31,8 @@ const Game = ({ onBack }) => {
   const wordVisibilityTimerRef = useRef(null);
   const holdingRef = useRef(false); // Use ref to track holding state for reliable checks
   const isEndingRoundRef = useRef(false); // Prevent double execution of round end
+  const isInitializedRef = useRef(false); // The game is built once; later updates must not reset it
+  const timeLeftRef = useRef(0); // Latest countdown value for the publisher below
 
   // Initialize game when component mounts
   useEffect(() => {
@@ -37,8 +40,15 @@ const Game = ({ onBack }) => {
     console.log('user:', user);
     console.log('currentGame:', currentGame);
     
+    // Only build the game once. currentGame keeps changing (scores, polling) and
+    // re-running this would throw away the round in progress.
+    if (isInitializedRef.current) {
+      return;
+    }
+
     if (currentGame && currentGame.teams && currentGame.words && currentGame.teams.length > 0) {
       console.log('Initializing game with valid data');
+      isInitializedRef.current = true;
       initializeGame();
     } else {
       console.log('Waiting for game data...');
@@ -115,6 +125,10 @@ const Game = ({ onBack }) => {
 
 
 useEffect(() => {
+  timeLeftRef.current = timeLeft;
+}, [timeLeft]);
+
+useEffect(() => {
   if (!roundActive) return;
 
   if (timeLeft === 0) {
@@ -125,6 +139,54 @@ useEffect(() => {
   const id = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
   return () => clearTimeout(id);
 }, [timeLeft, roundActive]);
+
+  /**
+   * Push the countdown to the backend so every player sees the same clock, both over the
+   * websocket and through polling. We publish on changes (start / skip / end) plus a slow
+   * heartbeat - the clients tick down locally in between, so this stays cheap.
+   */
+  const publishRoundState = async ({
+    active,
+    secondsLeft,
+    round = currentRound + 1,
+    contestant = contestants[currentContestantIndex],
+    finished = false
+  }) => {
+    if (!currentGame?.id) return;
+
+    const params = new URLSearchParams({
+      gameId: String(currentGame.id),
+      active: String(Boolean(active)),
+      secondsLeft: String(Math.max(0, Math.round(secondsLeft || 0))),
+      round: String(Math.min(Math.max(round, 0), 3)),
+      finished: String(Boolean(finished))
+    });
+    if (contestant?.name) params.set('contestantName', contestant.name);
+    if (contestant?.teamColor) params.set('teamColor', contestant.teamColor);
+
+    try {
+      await fetch(`${API_BASE}/game/round?${params.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      // Purely informational for the other players - never break the host's round.
+      console.error('Failed to publish round state:', error);
+    }
+  };
+
+  // Heartbeat: re-publish the remaining time so late joiners and reconnecting
+  // phones pick up an accurate countdown.
+  useEffect(() => {
+    if (!roundActive) return undefined;
+
+    const id = setInterval(() => {
+      publishRoundState({ active: true, secondsLeft: timeLeftRef.current });
+    }, 10000);
+
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundActive, currentContestantIndex, currentRound]);
 
 
   const startContestantRound = () => {
@@ -144,6 +206,9 @@ useEffect(() => {
     setRoundActive(true);
     setGameState('playing');
     setWordsUsedInRound(0);
+
+    // Let the players' leaderboards start the same countdown.
+    publishRoundState({ active: true, secondsLeft: duration });
     
     // // Start the countdown timer
     // gameTimerRef.current = setInterval(() => {
@@ -188,14 +253,20 @@ useEffect(() => {
     console.log("Word index", currentWordIndex);
   }, [currentWordIndex])
 
-  const showRandomWord = (immediateReveal = true, avalWords = availableWords) => {
+  const showRandomWord = (immediateReveal = true, avalWords = availableWords, excludeIndex = -1) => {
 
    if (avalWords.length === 0) {
       handleWordsExhausted();
       return;
     }
 
-    const randomIndex = Math.floor(Math.random() * avalWords.length);
+    // When skipping, the word that was just rejected must not come back immediately.
+    // With only a handful of words left a plain random pick hit it very often.
+    const candidateIndexes = avalWords
+      .map((_, index) => index)
+      .filter(index => index !== excludeIndex || avalWords.length === 1);
+
+    const randomIndex = candidateIndexes[Math.floor(Math.random() * candidateIndexes.length)];
     const word = avalWords[randomIndex];
     
     setCurrentWord(word);
@@ -266,27 +337,28 @@ useEffect(() => {
     setHoldStarted(false);
     setIsHolding(false);
     holdingRef.current = false;
-    
+
     // Reset the ending flag for next round
     isEndingRoundRef.current = false;
-    
+
     if (timeLeft <= 0) {
-       setCurrentContestantIndex(prev => {
-        const nextIndex = (prev + 1) % contestants.length; 
+       const nextIndex = contestants.length ? (currentContestantIndex + 1) % contestants.length : 0;
 
-        console.log(`Moving from contestant ${prev} (${contestants[prev]?.name}) to ${nextIndex} (${contestants[nextIndex]?.name})`);
-        
-        // Only move to next GAME ROUND after ALL contestants have played in current round
-        
-        return nextIndex;
-        });
+       console.log(`Moving from contestant ${currentContestantIndex} (${contestants[currentContestantIndex]?.name}) to ${nextIndex} (${contestants[nextIndex]?.name})`);
 
-    }    
+       setCurrentContestantIndex(nextIndex);
+
+       // Announce who is up next so the players' leaderboards show it while waiting.
+       publishRoundState({ active: false, secondsLeft: 0, contestant: contestants[nextIndex] });
+    } else {
+       publishRoundState({ active: false, secondsLeft: 0 });
+    }
 
   };
 
   const endGame = () => {
     setGameState('finished');
+    publishRoundState({ active: false, secondsLeft: 0, finished: true });
     setRoundActive(false);
     setHoldStarted(false);
     setIsHolding(false);
@@ -299,25 +371,34 @@ useEffect(() => {
   };
 
   const handleNextWord = async () => {
-
-    const response = await fetch(`http://51.210.5.252:8082/game/score?gameId=${currentGame.id}&playerId=${contestants[currentContestantIndex].id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch game data: ${response.status} ${response.statusText}`);
-      }
-
+    // Guard before scoring: a tap after the round ended must not award a point.
     if (!roundActive) return;
 
-      console.log(currentWordIndex);
+    const scoringPlayerId = contestants[currentContestantIndex]?.id;
 
-    const newAvalWords =  availableWords.filter((_, index) => index !== currentWordIndex);
+    // The round must carry on even if the score request fails, otherwise a flaky
+    // network freezes the game on the current word.
+    try {
+      const response = await fetch(
+        `${API_BASE}/game/score?gameId=${currentGame.id}&playerId=${scoringPlayerId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`Failed to register point: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to register point:', error);
+    }
+
+    const newAvalWords = availableWords.filter((_, index) => index !== currentWordIndex);
     setAvailableWords(newAvalWords);
-    
+
     if (wordVisibilityTimerRef.current) {
       clearTimeout(wordVisibilityTimerRef.current);
     }
@@ -327,14 +408,12 @@ useEffect(() => {
         return;
     }
 
-
-    
     showRandomWord(true, newAvalWords);
   };
 
   const handleSkipWord = () => {
     if (!roundActive) return;
-    
+
     if (wordVisibilityTimerRef.current) {
       clearTimeout(wordVisibilityTimerRef.current);
     }
@@ -344,11 +423,12 @@ useEffect(() => {
         return;
     }
 
-    setTimeLeft(prev => {
-      return prev >= 15 ? prev - 15 : 0;
-    })
-    
-    showRandomWord(true);
+    const penalisedTime = timeLeft >= 15 ? timeLeft - 15 : 0;
+    setTimeLeft(penalisedTime);
+    publishRoundState({ active: penalisedTime > 0, secondsLeft: penalisedTime });
+
+    // Pass the current index so the skipped word isn't drawn again straight away.
+    showRandomWord(true, availableWords, currentWordIndex);
   };
 
   const handleScreenHold = (holding) => {

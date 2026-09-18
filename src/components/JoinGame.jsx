@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from './GameContext';
+import { API_BASE } from '../config';
 
 const JoinGame = ({ onBack, onGameJoined }) => {
   const [games, setGames] = useState([]);
@@ -22,7 +23,7 @@ const JoinGame = ({ onBack, onGameJoined }) => {
       setError(null);
       console.log('Зареждане на наличните игри от API...');
 
-      const response = await fetch('http://51.210.5.252:8082/game', {
+      const response = await fetch(`${API_BASE}/game`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });

@@ -1,7 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import {
+  API_BASE,
+  WS_URL,
+  POLL_INTERVAL_CONNECTED_MS,
+  POLL_INTERVAL_DISCONNECTED_MS
+} from '../config';
 
 // Create the context
 const GameContext = createContext(undefined);
+
+// Pages that need live game data; everything else has nothing to refresh.
+const POLLED_PAGES = ['lobby', 'game', 'leaderboard'];
 
 // Storage keys for consistency
 const STORAGE_KEYS = {
@@ -86,12 +95,23 @@ export const GameProvider = ({ children }) => {
   const [gameCreationData, setGameCreationData] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Keep a ref of the page so callbacks created once (websocket handlers, poll loop)
+  // never act on a stale value.
+  const currentPageRef = useRef(currentPage);
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
   // WebSocket state
   const [wsConnection, setWsConnection] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [gameUpdates, setGameUpdates] = useState(null);
+  const [lastSyncAt, setLastSyncAt] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
+  const pingIntervalRef = useRef(null);
+  const manualCloseRef = useRef(false);
 
   // Load persisted data on component mount
   useEffect(() => {
@@ -103,11 +123,14 @@ export const GameProvider = ({ children }) => {
     const savedGameCreationData = loadFromStorage(STORAGE_KEYS.GAME_CREATION_DATA);
 
     if (savedUser && savedUser.gameId) {
+      // Update the ref synchronously - the websocket callbacks read it and setUser
+      // has not been applied yet at this point.
+      userRef.current = savedUser;
       setUser(savedUser);
       console.log('Restored user from storage:', savedUser);
-      
+
       // Reconnect WebSocket if user has gameId
-      connectWebSocket(savedUser.gameId, savedUser.name, savedUser.role);
+      connectWebSocket(savedUser.gameId);
     }
 
     if (savedCurrentPage) {
@@ -181,75 +204,10 @@ export const GameProvider = ({ children }) => {
     }
   }, [gameCreationData, isInitialized]);
 
-  // WebSocket connection function
-  const connectWebSocket = (gameId, playerName, role) => {
-    if (wsRef.current) {
-      console.log('WebSocket already connected, closing existing connection');
-      wsRef.current.close();
-    }
-
-    try {
-      const wsUrl = `http://51.210.5.252:8082/ws`;
-      console.log('Connecting to WebSocket:', wsUrl);
-      
-      wsRef.current = new WebSocket(wsUrl);
-      setWsConnection(wsRef.current);
-
-      wsRef.current.onopen = () => {
-        console.log('WebSocket connected successfully');
-        setWsConnected(true);
-        
-        // Send initial join message
-        const joinMessage = gameId;
-        
-        wsRef.current.send(joinMessage);
-        console.log('Sent join message:', joinMessage);
-      };
-
-      wsRef.current.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log('WebSocket message received:', message);
-          
-          handleWebSocketMessage(message);
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      wsRef.current.onerror = (error) => {
-        console.error('WebSocket error:', JSON.stringify(error));
-        setWsConnected(false);
-      };
-
-      wsRef.current.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
-        setWsConnected(false);
-        setWsConnection(null);
-        
-        // Auto-reconnect if user still has gameId and it wasn't a clean close
-        if (user.gameId && event.code !== 1000) {
-          console.log('Attempting to reconnect in 3 seconds...');
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (user.gameId) {
-              connectWebSocket(user.gameId, user.name, user.role);
-            }
-          }, 3000);
-        }
-      };
-
-    } catch (error) {
-      console.error('Error creating WebSocket connection:', error);
-      setWsConnected(false);
-    }
-  };
-
   // Fetch full game data
-  const fetchGameData = async (gameId) => {
+  const fetchGameData = useCallback(async (gameId) => {
     try {
-      console.log('Fetching full game data for:', gameId);
-      
-      const response = await fetch(`http://51.210.5.252:8082/game/${gameId}`, {
+      const response = await fetch(`${API_BASE}/game/${gameId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -260,35 +218,75 @@ export const GameProvider = ({ children }) => {
         throw new Error(`Failed to fetch game data: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
-      console.log('Full game data fetched:', data);
-      
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error fetching game data:', error);
       return null;
     }
-  };
+  }, []);
+
+  // Merge a snapshot coming from the REST API into the local game state.
+  // Locally-owned flags (isStarted / isSetupComplete / categoryWords) are never
+  // dropped, because the backend does not know about them.
+  const applyGameSnapshot = useCallback((data) => {
+    if (!data) return;
+
+    const started = Array.isArray(data.teams) && data.teams.length > 0;
+
+    setCurrentGame(prev => ({
+      ...(prev || {}),
+      ...data,
+      isStarted: started || Boolean(prev?.isStarted),
+      isSetupComplete: prev?.isSetupComplete ?? true,
+      categoryWords: prev?.categoryWords ?? data.categoryWords
+    }));
+    setLastSyncAt(Date.now());
+
+    // The host may have started the game while our websocket was asleep or blocked;
+    // the poll result is then the only thing that gets us out of the lobby.
+    if (started && currentPageRef.current === 'lobby') {
+      const role = userRef.current.role;
+      console.log('Game start detected while polling, leaving lobby as', role);
+      setCurrentPage(role === 'host' ? 'game' : 'leaderboard');
+    }
+  }, []);
+
+  // Pull the latest game state over plain HTTP.
+  const refreshGameState = useCallback(async () => {
+    const gameId = userRef.current.gameId;
+    if (!gameId) return null;
+
+    const data = await fetchGameData(gameId);
+    if (data) {
+      applyGameSnapshot(data);
+    }
+    return data;
+  }, [fetchGameData, applyGameSnapshot]);
+
+  const refreshGameStateRef = useRef(refreshGameState);
+  useEffect(() => {
+    refreshGameStateRef.current = refreshGameState;
+  }, [refreshGameState]);
 
   // Handle incoming WebSocket messages
-  const handleWebSocketMessage = async (message) => {
+  const handleWebSocketMessage = useCallback(async (message) => {
     switch (message.event) {
       case 'join':
         setCurrentGame(prev => {
           if (!prev) return prev;
-          
+
           const currentPlayers = prev.players || [];
           const exists = currentPlayers.find(p => p.name === message.name);
-          
+
           if (!exists) {
             console.log('Player joined:', message.name);
-            
+
             const newPlayer = {
               name: message.name,
               id: message.playerId || message.name,
               role: 'player'
             };
-            
+
             return {
               ...prev,
               players: [...currentPlayers, newPlayer]
@@ -297,97 +295,284 @@ export const GameProvider = ({ children }) => {
           return prev;
         });
         break;
-      
-      case 'start':
+
+      case 'start': {
         console.log('Game start message received:', message);
-        
-        // Get the current user state directly from the latest state
-        setUser(currentUser => {
-          console.log('Current user when handling start message:', currentUser);
-          
-          if (currentUser.gameId) {
-            // Fetch full game data including words using the current gameId
-            fetchGameData(currentUser.gameId).then(gameData => {
-              if (gameData) {
-                setCurrentGame({
-                  ...gameData,
-                  isStarted: true
-                });
-                
-                // Navigate based on user role
-                if (currentUser.role === 'host') {
-                  console.log('Host navigating to game page');
-                  setCurrentPage('game');
-                } else {
-                  console.log('Player navigating to leaderboard page');
-                  setCurrentPage('leaderboard');
-                }
-              }
-            });
-          } else {
-            console.error('No gameId found in current user state:', currentUser);
-          }
-          
-          return currentUser; // Return unchanged user state
-        });
+
+        const currentUser = userRef.current;
+        if (!currentUser.gameId) {
+          console.error('No gameId found in current user state:', currentUser);
+          break;
+        }
+
+        const gameData = await fetchGameData(currentUser.gameId);
+        if (gameData) {
+          setCurrentGame(prev => ({
+            ...(prev || {}),
+            ...gameData,
+            isStarted: true,
+            isSetupComplete: prev?.isSetupComplete ?? true,
+            categoryWords: prev?.categoryWords ?? gameData.categoryWords
+          }));
+          setLastSyncAt(Date.now());
+          setCurrentPage(currentUser.role === 'host' ? 'game' : 'leaderboard');
+        }
         break;
-      
+      }
+
       case 'leave':
         setCurrentGame(prev => {
           if (!prev) return prev;
-          
+
           return {
             ...prev,
             players: (prev.players || []).filter(p => p.name !== message.playerId)
           };
         });
         break;
-      
+
       case 'score':
-        console.log('Points update:', message);
-        console.log(userRef.current);
-        if (userRef.current.role == 'player') {
-            setCurrentGame(prev => ({
-              ...prev,
-              teams: message.teams || prev?.teams,
-            }));
+        // The host owns the score locally; everybody else follows the broadcast.
+        if (userRef.current.role === 'player') {
+          setCurrentGame(prev => ({
+            ...prev,
+            teams: message.teams || prev?.teams
+          }));
         }
+        setLastSyncAt(Date.now());
         break;
-      
+
+      case 'round':
+        // Countdown published by the host so every player can watch the clock.
+        setCurrentGame(prev => ({
+          ...prev,
+          roundState: message.roundState || prev?.roundState,
+          teams: userRef.current.role === 'player' ? (message.teams || prev?.teams) : prev?.teams
+        }));
+        setLastSyncAt(Date.now());
+        break;
+
       default:
-        console.log('Unknown WebSocket message type:', message.type, message);
+        console.log('Unknown WebSocket message type:', message.event, message);
+    }
+  }, [fetchGameData]);
+
+  const handleWebSocketMessageRef = useRef(handleWebSocketMessage);
+  useEffect(() => {
+    handleWebSocketMessageRef.current = handleWebSocketMessage;
+  }, [handleWebSocketMessage]);
+
+  const clearReconnectTimer = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
   };
+
+  const clearPingTimer = () => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+  };
+
+  // WebSocket connection function
+  const connectWebSocket = useCallback((gameId) => {
+    const targetGameId = gameId ?? userRef.current.gameId;
+    if (!targetGameId) {
+      console.warn('connectWebSocket called without a gameId');
+      return;
+    }
+
+    clearReconnectTimer();
+
+    // Don't stack sockets: an already open/connecting one for this game is enough.
+    if (wsRef.current &&
+        (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    if (wsRef.current) {
+      manualCloseRef.current = true;
+      try { wsRef.current.close(); } catch (e) { /* ignore */ }
+      wsRef.current = null;
+    }
+
+    try {
+      console.log('Connecting to WebSocket:', WS_URL);
+      manualCloseRef.current = false;
+
+      const socket = new WebSocket(WS_URL);
+      wsRef.current = socket;
+      setWsConnection(socket);
+
+      socket.onopen = () => {
+        console.log('WebSocket connected successfully');
+        reconnectAttemptsRef.current = 0;
+        setWsConnected(true);
+
+        // Subscribe to the game: the backend expects the bare game id.
+        socket.send(String(targetGameId));
+
+        // Keep-alive - mobile networks drop idle sockets without telling us.
+        clearPingTimer();
+        pingIntervalRef.current = setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            try { socket.send('ping'); } catch (e) { /* ignore */ }
+          }
+        }, 25000);
+
+        // Re-sync straight away: we may have missed events while disconnected.
+        refreshGameStateRef.current();
+      };
+
+      socket.onmessage = (event) => {
+        if (event.data === 'pong') return;
+        try {
+          const message = JSON.parse(event.data);
+          console.log('WebSocket message received:', message);
+          handleWebSocketMessageRef.current(message);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      socket.onerror = () => {
+        // The error event carries no useful detail; onclose does the recovery.
+        console.warn('WebSocket error');
+      };
+
+      socket.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        clearPingTimer();
+        setWsConnected(false);
+        setWsConnection(null);
+        if (wsRef.current === socket) {
+          wsRef.current = null;
+        }
+
+        if (manualCloseRef.current || !userRef.current.gameId) {
+          return;
+        }
+
+        // Back off a little on repeated failures, but keep trying: polling covers
+        // the gap in the meantime.
+        reconnectAttemptsRef.current += 1;
+        const delay = Math.min(15000, 1000 * Math.pow(2, Math.min(reconnectAttemptsRef.current - 1, 4)));
+        console.log(`Attempting to reconnect in ${delay}ms`);
+        clearReconnectTimer();
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (userRef.current.gameId) {
+            connectWebSocket(userRef.current.gameId);
+          }
+        }, delay);
+      };
+
+    } catch (error) {
+      // e.g. a browser that refuses the URL - polling keeps the game usable.
+      console.error('Error creating WebSocket connection:', error);
+      setWsConnected(false);
+    }
+  }, []);
 
   // Send WebSocket message
   const sendWebSocketMessage = (message) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
-      console.log('Sent WebSocket message:', message);
       return true;
-    } else {
-      console.warn('WebSocket not connected, cannot send message:', message);
-      return false;
     }
+    console.warn('WebSocket not connected, cannot send message:', message);
+    return false;
   };
 
   // Disconnect WebSocket
-  const disconnectWebSocket = () => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-    
+  const disconnectWebSocket = useCallback(() => {
+    clearReconnectTimer();
+    clearPingTimer();
+    reconnectAttemptsRef.current = 0;
+
     if (wsRef.current) {
       console.log('Disconnecting WebSocket...');
-      wsRef.current.close(1000, 'User disconnected');
+      manualCloseRef.current = true;
+      try { wsRef.current.close(1000, 'User disconnected'); } catch (e) { /* ignore */ }
       wsRef.current = null;
     }
-    
+
     setWsConnection(null);
     setWsConnected(false);
     setGameUpdates(null);
-  };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Polling fallback.
+  // The websocket is best-effort: it is blocked by some mobile networks and gets
+  // suspended when a phone locks or the tab goes to the background. Polling the
+  // REST API keeps the lobby, the scores and the round timer correct regardless.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!isInitialized || !user.gameId || !POLLED_PAGES.includes(currentPage)) {
+      return undefined;
+    }
+
+    const interval = wsConnected ? POLL_INTERVAL_CONNECTED_MS : POLL_INTERVAL_DISCONNECTED_MS;
+    let cancelled = false;
+
+    // Fetch once immediately so a freshly opened page is never stale.
+    refreshGameStateRef.current();
+
+    // Deliberately NOT gated on document.hidden: browsers report a visible page as
+    // hidden often enough (embedded/in-app browsers, unfocused windows) that skipping
+    // those ticks is how a leaderboard ends up frozen. Browsers already throttle
+    // timers in genuinely backgrounded tabs, which is enough.
+    const id = setInterval(() => {
+      if (cancelled) return;
+      refreshGameStateRef.current();
+    }, interval);
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [isInitialized, user.gameId, currentPage, wsConnected]);
+
+  // Phones suspend sockets in the background: when the player comes back, re-sync
+  // immediately and rebuild the connection instead of waiting for the next tick.
+  useEffect(() => {
+    if (!isInitialized) return undefined;
+
+    const wakeUp = () => {
+      if (!userRef.current.gameId) return;
+
+      refreshGameStateRef.current();
+      if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
+        reconnectAttemptsRef.current = 0;
+        connectWebSocket(userRef.current.gameId);
+      }
+    };
+
+    window.addEventListener('focus', wakeUp);
+    window.addEventListener('online', wakeUp);
+    document.addEventListener('visibilitychange', wakeUp);
+
+    return () => {
+      window.removeEventListener('focus', wakeUp);
+      window.removeEventListener('online', wakeUp);
+      document.removeEventListener('visibilitychange', wakeUp);
+    };
+  }, [isInitialized, connectWebSocket]);
+
+  // Tear everything down when the provider goes away.
+  useEffect(() => {
+    return () => {
+      clearReconnectTimer();
+      clearPingTimer();
+      if (wsRef.current) {
+        manualCloseRef.current = true;
+        try { wsRef.current.close(); } catch (e) { /* ignore */ }
+        wsRef.current = null;
+      }
+    };
+  }, []);
 
   // Set user as host with optional game data
   const setUserAsHost = (name, gameId, gameData = null) => {
@@ -397,14 +582,15 @@ export const GameProvider = ({ children }) => {
       role: 'host',
       gameId
     };
+    userRef.current = userData;
     setUser(userData);
-    
+
     if (gameData) {
       setGameCreationData(gameData);
     }
-    
+
     // Connect WebSocket for host
-    connectWebSocket(gameId, name.trim(), 'host');
+    connectWebSocket(gameId);
   };
 
   // Set user as player
@@ -415,15 +601,16 @@ export const GameProvider = ({ children }) => {
       role: 'player',
       gameId
     };
+    userRef.current = userData;
     setUser(userData);
-    
+
     // Store the joined game data for player setup
     if (gameData) {
       setGameCreationData(gameData);
     }
-    
+
     // Connect WebSocket for player
-    connectWebSocket(gameId, name.trim(), 'player');
+    connectWebSocket(gameId);
   };
 
   // Clear all user and game data
@@ -431,8 +618,9 @@ export const GameProvider = ({ children }) => {
     console.log('Clearing all user and game data');
     
     // Disconnect WebSocket first
+    userRef.current = { name: '', role: null, gameId: null };
     disconnectWebSocket();
-    
+
     setUser({
       name: '',
       role: null,
@@ -488,6 +676,10 @@ export const GameProvider = ({ children }) => {
   const hasValidSession = () => {
     const hasGameId = Boolean(user.gameId);
     const hasRole = Boolean(user.role);
+    // Teams only exist once the host has started, so that is the authoritative
+    // signal; isStarted is just our local mirror of it.
+    const gameStarted = Boolean(currentGame?.isStarted) ||
+      (Array.isArray(currentGame?.teams) && currentGame.teams.length > 0);
 
     switch (currentPage) {
       case 'landing':
@@ -502,9 +694,9 @@ export const GameProvider = ({ children }) => {
       case 'lobby':
         return hasGameId && hasRole && (user.role === 'host' || user.role === 'player');
       case 'game':
-        return hasGameId && hasRole && currentGame?.isStarted && user.role === 'host';
+        return hasGameId && hasRole && gameStarted && user.role === 'host';
       case 'leaderboard':
-        return hasGameId && hasRole && currentGame?.isStarted && user.role === 'player';
+        return hasGameId && hasRole && gameStarted && user.role === 'player';
       default:
         return false;
     }
@@ -542,6 +734,7 @@ export const GameProvider = ({ children }) => {
     wsConnection,
     wsConnected,
     gameUpdates,
+    lastSyncAt,
     
     // State setters
     setCurrentGame: updateCurrentGame,
@@ -567,6 +760,7 @@ export const GameProvider = ({ children }) => {
     connectWebSocket,
     disconnectWebSocket,
     fetchGameData,
+    refreshGameState,
     
     // Utility functions
     hasCompleteGameData,

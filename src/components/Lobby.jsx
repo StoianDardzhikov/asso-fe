@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from './GameContext';
+import { API_BASE } from '../config';
 
 const Lobby = ({ onBack, onStartGame }) => {
   const { 
@@ -11,6 +12,7 @@ const Lobby = ({ onBack, onStartGame }) => {
     gameCreationData,
     currentGame,
     setCurrentGame,
+    refreshGameState,
     isInitialized
   } = useGame();
   
@@ -20,28 +22,25 @@ const Lobby = ({ onBack, onStartGame }) => {
     if (user.gameId && isInitialized) {
       fetchAndSetGameData();
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.gameId, isInitialized]);
 
+  // Use the shared refresh so this never fights with the polling loop. The old
+  // version replaced currentGame wholesale and wiped flags the poll had just set,
+  // which bounced the player back to the landing page right after the game started.
   const fetchAndSetGameData = async () => {
-    try {
-      const response = await fetch(`http://51.210.5.252:8082/game/${user.gameId}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+    const data = await refreshGameState();
+    if (data) return;
+
+    console.error('Грешка при зареждане на играта');
+    if (gameCreationData && user.role === 'host') {
+      setCurrentGame({
+        id: user.gameId,
+        categories: gameCreationData.categories || [],
+        playersPerTeam: gameCreationData.playersPerTeam || 2,
+        players: [{ name: user.name, role: user.role }],
+        isSetupComplete: true
       });
-      if (!response.ok) throw new Error(`Неуспешно зареждане на играта: ${response.status}`);
-      const data = await response.json();
-      setCurrentGame({ ...data, isSetupComplete: true });
-    } catch (error) {
-      console.error('Грешка при зареждане на играта:', error);
-      if (gameCreationData && user.role === 'host') {
-        setCurrentGame({
-          id: user.gameId,
-          categories: gameCreationData.categories || [],
-          playersPerTeam: gameCreationData.playersPerTeam || 2,
-          players: [{ name: user.name, role: user.role }],
-          isSetupComplete: true
-        });
-      }
     }
   };
 
@@ -50,7 +49,7 @@ const Lobby = ({ onBack, onStartGame }) => {
 
     setIsStarting(true);
     try {
-      const response = await fetch(`http://51.210.5.252:8082/game/start?gameId=${user.gameId}`, {
+      const response = await fetch(`${API_BASE}/game/start?gameId=${user.gameId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });

@@ -534,8 +534,8 @@ useEffect(() => {
   }
 
   return (
-    <div 
-      className="min-h-screen flex flex-col relative"
+    <div
+      className="game-screen flex flex-col relative"
       onMouseDown={() => roundActive && handleScreenHold(true)}
       onMouseUp={() => roundActive && handleScreenHold(false)}
       onTouchStart={() => roundActive && handleScreenHold(true)}
@@ -545,7 +545,7 @@ useEffect(() => {
       
       {/* Top section with current player info */}
       {gameState === 'waiting' && (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-4">
           <div className="text-center text-white">
             <h2 className="text-3xl font-bold mb-4">Next Player</h2>
             <div 
@@ -573,33 +573,11 @@ useEffect(() => {
       {/* Game playing state */}
       {gameState === 'playing' && (
         <>
-          {/* Timer positioned based on word visibility and hold state */}
-          <div className={`absolute left-1/2 transform -translate-x-1/2 transition-all duration-300 ${
-            (wordVisible && !holdStarted) || holdStarted ? 'top-32' : 'top-1/2 -translate-y-1/2'
-          }`}>
-            <div className={`text-center ${timeLeft <= 10 ? 'text-red-300' : 'text-white'}`}>
-              <div className="text-6xl font-bold">
-                {formatTime(timeLeft)}
-              </div>
-            </div>
-          </div>
-
-          {/* Word in the center when visible */}
-          {wordVisible && currentWord && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300">
-              <div className="text-center text-white">
-                <div className="text-5xl font-bold bg-black bg-opacity-30 backdrop-blur-sm rounded-2xl px-8 py-6">
-                  {currentWord}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Current player indicator */}
-          <div className="absolute top-8 left-8">
-            <div 
+          <div className="absolute top-6 left-6 z-10">
+            <div
               className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl px-4 py-2"
-              style={currentContestant?.teamColor ? { 
+              style={currentContestant?.teamColor ? {
                 borderLeft: `4px solid ${mapBulgarianColorToHex(currentContestant.teamColor)}`
               } : {}}
             >
@@ -608,26 +586,52 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Bottom buttons */}
-          <div className="absolute bottom-8 left-0 right-0 px-8">
-            <div className="flex space-x-4 max-w-md mx-auto">
+          {/* Everything between the top bar and the buttons. flex-1 + min-h-0 means
+              it absorbs whatever height is left, so the buttons below can never be
+              pushed off the screen. */}
+          <div className="flex-1 min-h-0 relative">
+            {/* Timer: centred, or moved up while a word is on screen */}
+            <div className={`game-timer-wrap absolute left-1/2 transform -translate-x-1/2 transition-all duration-300 ${
+              wordVisible || holdStarted ? 'game-timer-wrap--raised top-24' : 'top-1/2 -translate-y-1/2'
+            }`}>
+              <div className={`text-center ${timeLeft <= 10 ? 'text-red-300' : 'text-white'}`}>
+                <div className="game-timer text-6xl font-bold">
+                  {formatTime(timeLeft)}
+                </div>
+              </div>
+            </div>
 
+            {/* Word in the center when visible */}
+            {wordVisible && currentWord && (
+              <div className="absolute top-1/2 left-1/2 w-full px-6 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300">
+                <div className="text-center text-white">
+                  <div className="game-word text-4xl sm:text-5xl font-bold bg-black bg-opacity-30 backdrop-blur-sm rounded-2xl px-6 py-5 break-words">
+                    {currentWord}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom buttons - in normal flow, so always on screen */}
+          <div className="game-screen__bottom shrink-0 px-6 pt-2">
+            <div className="flex space-x-4 max-w-md mx-auto">
               <button
                 onClick={handleSkipWord}
                 className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-4 px-6 rounded-2xl text-lg transition-all transform active:scale-95"
               >
                 Skip Word
               </button>
-                            <button
+              <button
                 onClick={handleNextWord}
                 className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-2xl text-lg transition-all transform active:scale-95"
               >
                 Next Word
               </button>
             </div>
-            
+
             {/* Instructions */}
-            <p className="text-center text-white text-sm mt-4 opacity-75">
+            <p className="text-center text-white text-sm mt-3 opacity-75">
               Hold anywhere to reveal word
             </p>
           </div>
@@ -637,7 +641,7 @@ useEffect(() => {
       {/* Exit button */}
       <button
         onClick={handleLeaveGame}
-        className="absolute top-8 right-8 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-xl transition-colors"
+        className="absolute top-6 right-6 z-10 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-xl transition-colors"
       >
         Exit
       </button>

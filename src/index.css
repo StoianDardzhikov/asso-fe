@@ -14,3 +14,60 @@ code {
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Play screen
+   ---------------------------------------------------------------------------
+   Mobile browsers include the strip behind the URL bar in 100vh, so a 100vh
+   screen is taller than what you can actually see. The page then scrolls and
+   the bottom buttons end up hidden under the browser chrome. dvh tracks the
+   real visible height, and overflow:hidden guarantees this screen can never
+   scroll - which also stops rubber-banding from fighting the hold-to-reveal
+   gesture. */
+.game-screen {
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* The buttons sit in normal flow at the end of the column, so they are always
+   inside the viewport. The inset keeps them clear of the iPhone home indicator
+   and the Android gesture bar. */
+.game-screen__bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+}
+
+/* Landscape phones and other short viewports: shrink the big elements instead
+   of letting them collide. */
+@media (max-height: 640px) {
+  .game-timer {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .game-word {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  .game-screen__bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+}
+
+/* Landscape phones are short enough that a centred word would sit on top of the
+   raised timer. Tuck the timer right under the top bar instead. The two-class
+   selector outranks Tailwind's own top-* utility without needing !important. */
+@media (max-height: 480px) {
+  .game-screen .game-timer-wrap--raised {
+    top: 0.5rem;
+  }
+
+  .game-word {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+}

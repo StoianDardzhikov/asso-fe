@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from './GameContext';
+import Backdrop from './Backdrop';
 import { API_BASE } from '../config';
 
 const GameSetup = ({ onBack, onSetupComplete }) => {
@@ -100,137 +101,144 @@ const GameSetup = ({ onBack, onSetupComplete }) => {
   const progressPercentage = categories.length > 0 ? (getCompletedCategories() / categories.length) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-3 sm:p-4 lg:p-6">
-      <div className="max-w-2xl mx-auto">
+    <div
+      className="min-h-screen p-4 relative overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #6d28d9 0%, #4f46e5 45%, #1e3a8a 100%)' }}
+    >
+      <Backdrop palette="purple" />
+
+      <div className="above max-w-lg mx-auto">
+
         {/* Заглавие */}
-        <div className="text-center mb-6 sm:mb-8 pt-4 sm:pt-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Настройка на Играта</h1>
-          <p className="text-lg sm:text-xl text-blue-100">
-            Добавете думи за всяка категория
+        <div className="text-center pt-8 pb-6 anim-rise">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-white mb-1">
+            Твоите думи
+          </h1>
+          <p className="text-indigo-100 text-sm font-bold">
+            По 2 думи за всяка категория
           </p>
-          <p className="text-blue-200 text-sm sm:text-base mt-1">
-            ID на играта: <span className="font-mono font-bold">{user.gameId}</span>
-          </p>
+          <span className="pill mt-3" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }}>
+            Игра #{user.gameId}
+          </span>
         </div>
 
-        {/* Форма за настройка */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-6">
-          
-          {/* Инструкции */}
-          <div className="text-center mb-6 p-4 bg-blue-50 rounded-xl">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
-              📝 Подгответе вашите думи
-            </h2>
-            <p className="text-gray-600 text-sm sm:text-base">
-              Добавете по 2 думи за всяка категория. Играчите ще отгатват връзката!
-            </p>
-          </div>
-
-          {/* Проверка за налични категории */}
+        <div className="card anim-pop mb-6">
           {categories.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-600 mb-4">Не са намерени категории. Моля, върнете се и създайте първо играта.</p>
-              <button
-                onClick={onBack}
-                className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl"
-              >
-                ← Връщане към създаване на игра
-              </button>
+              <div className="text-4xl mb-3" aria-hidden="true">🤔</div>
+              <p className="font-bold mb-5" style={{ color: 'var(--ink-soft)' }}>
+                Не са намерени категории. Върни се и създай играта първо.
+              </p>
+              <button onClick={onBack} className="btn btn--grape">← Назад</button>
             </div>
           ) : (
             <>
+              {/* Прогрес */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="label mb-0">Прогрес</span>
+                  <span
+                    key={getCompletedCategories()}
+                    className="text-sm font-extrabold anim-punch inline-block"
+                    style={{ color: 'var(--grape)' }}
+                  >
+                    {getCompletedCategories()} / {categories.length}
+                  </span>
+                </div>
+                <div className="w-full rounded-full h-3 overflow-hidden" style={{ background: '#ede9fe' }}>
+                  <div
+                    className="h-3 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${progressPercentage}%`,
+                      background: 'linear-gradient(90deg, #a855f7, #6366f1)'
+                    }}
+                  />
+                </div>
+              </div>
+
               {/* Категории и думи */}
-              <div className="space-y-6">
-                {categories.map((category, categoryIndex) => (
-                  <div key={category} className="border-2 border-gray-200 rounded-xl p-4 sm:p-5">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 text-center">
-                      📚 {category}
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      {[0, 1].map((wordIndex) => (
-                        <div key={wordIndex}>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Думa {wordIndex + 1}
-                          </label>
+              <div className="space-y-4 stagger">
+                {categories.map((category) => {
+                  const done =
+                    categoryWords[category] &&
+                    categoryWords[category].every((w) => w.trim() !== '');
+
+                  return (
+                    <div
+                      key={category}
+                      className="rounded-3xl p-4 transition-all"
+                      style={{
+                        background: done ? '#f0fdf9' : '#f7f5ff',
+                        border: `2.5px solid ${done ? '#a7f3d0' : '#e7e1ff'}`
+                      }}
+                    >
+                      <h3
+                        className="font-display text-lg font-bold mb-3 flex items-center gap-2"
+                        style={{ color: 'var(--ink)' }}
+                      >
+                        <span aria-hidden="true">{done ? '✅' : '📚'}</span>
+                        {category}
+                      </h3>
+
+                      <div className="space-y-2.5">
+                        {[0, 1].map((wordIndex) => (
                           <input
+                            key={wordIndex}
                             type="text"
                             value={categoryWords[category]?.[wordIndex] || ''}
                             onChange={(e) => updateWord(category, wordIndex, e.target.value)}
-                            placeholder={`Въведете дума ${wordIndex + 1} за ${category}...`}
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-sm sm:text-base"
+                            placeholder={`Дума ${wordIndex + 1}`}
+                            className={`field ${
+                              categoryWords[category]?.[wordIndex]?.trim() ? 'field--done' : ''
+                            }`}
                           />
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Индикатор за прогрес */}
-              <div className="mt-6 mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">Прогрес на настройката</span>
-                  <span className="text-sm text-gray-500">
-                    {getCompletedCategories()} / {categories.length} категории готови
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${progressPercentage}%` }}
-                  ></div>
-                </div>
+                  );
+                })}
               </div>
 
               {/* Грешка */}
               {submitError && (
-                <div className="mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-center">
-                  <p className="text-red-600 text-sm font-medium">{submitError}</p>
+                <div
+                  className="mt-5 p-3 rounded-2xl text-center anim-pop"
+                  style={{ background: '#fff1f2', border: '2px solid #fecdd3' }}
+                >
+                  <p className="text-sm font-extrabold" style={{ color: '#e11d48' }}>{submitError}</p>
                 </div>
               )}
 
-              {/* Бутони за действие */}
-              <div className="space-y-3">
+              {/* Бутони */}
+              <div className="mt-6 space-y-3">
                 <button
                   onClick={handleSubmit}
                   disabled={!isFormValid() || isSubmitting}
-                  className={`w-full py-3 sm:py-4 px-6 rounded-xl sm:rounded-2xl font-bold text-lg sm:text-xl transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation ${
-                    isFormValid() && !isSubmitting
-                      ? 'bg-green-500 hover:bg-green-600 active:bg-green-700 text-white shadow-lg hover:shadow-xl'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                  className="btn btn--mint btn--lg btn--block"
                 >
                   {isSubmitting ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Настройване на играта...</span>
-                    </div>
+                    <>
+                      <span className="inline-block w-5 h-5 rounded-full border-2 border-white border-t-transparent anim-spin-slow" />
+                      Изпращам...
+                    </>
                   ) : (
-                    '🚀 Завърши настройката'
+                    <>🚀 Готово</>
                   )}
                 </button>
-                
-                <button
-                  onClick={onBack}
-                  disabled={isSubmitting}
-                  className="w-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 font-bold py-2 sm:py-3 px-6 rounded-xl sm:rounded-2xl text-base sm:text-lg transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation"
-                >
-                  ← Връщане към създаване на игра
+
+                <button onClick={onBack} disabled={isSubmitting} className="btn btn--quiet btn--block">
+                  ← Назад
                 </button>
               </div>
             </>
           )}
         </div>
 
-        {/* Съвети */}
-        <div className="text-center">
-          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-white">
-            <p className="text-sm sm:text-base font-medium mb-1">💡 Съвет</p>
-            <p className="text-sm text-blue-100">
-              Изберете думи, които имат ясни връзки, но не са твърде очевидни!
-            </p>
-          </div>
+        <div className="glass p-4 text-center text-white mb-8">
+          <p className="text-sm font-extrabold mb-1">💡 Съвет</p>
+          <p className="text-xs font-bold text-indigo-100">
+            Избирай думи с ясна връзка, но не твърде очевидни!
+          </p>
         </div>
       </div>
     </div>

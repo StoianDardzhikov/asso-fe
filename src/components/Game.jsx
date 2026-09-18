@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from './GameContext';
 import { API_BASE } from '../config';
+import Confetti from './Confetti';
 
 const Game = ({ onBack }) => {
   const { 
@@ -25,6 +26,8 @@ const Game = ({ onBack }) => {
   const [isHolding, setIsHolding] = useState(false);
   const [holdStarted, setHoldStarted] = useState(false); // Track when hold begins for timer position
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [roundDuration, setRoundDuration] = useState(60); // denominator for the countdown ring
+  const [scoreBurst, setScoreBurst] = useState(0); // bumped on every point, replays the celebration
   
   // Refs for timers and state tracking
   const gameTimerRef = useRef(null);
@@ -150,7 +153,8 @@ useEffect(() => {
     secondsLeft,
     round = currentRound + 1,
     contestant = contestants[currentContestantIndex],
-    finished = false
+    finished = false,
+    totalSeconds = 0
   }) => {
     if (!currentGame?.id) return;
 
@@ -159,7 +163,10 @@ useEffect(() => {
       active: String(Boolean(active)),
       secondsLeft: String(Math.max(0, Math.round(secondsLeft || 0))),
       round: String(Math.min(Math.max(round, 0), 3)),
-      finished: String(Boolean(finished))
+      finished: String(Boolean(finished)),
+      // 0 means "keep whatever total the backend already has", so the heartbeat
+      // below doesn't have to resend it.
+      totalSeconds: String(Math.max(0, Math.round(totalSeconds || 0)))
     });
     if (contestant?.name) params.set('contestantName', contestant.name);
     if (contestant?.teamColor) params.set('teamColor', contestant.teamColor);
@@ -203,12 +210,13 @@ useEffect(() => {
 
     const duration = getRoundDuration(currentRound + 1);
     setTimeLeft(duration);
+    setRoundDuration(duration);
     setRoundActive(true);
     setGameState('playing');
     setWordsUsedInRound(0);
 
     // Let the players' leaderboards start the same countdown.
-    publishRoundState({ active: true, secondsLeft: duration });
+    publishRoundState({ active: true, secondsLeft: duration, totalSeconds: duration });
     
     // // Start the countdown timer
     // gameTimerRef.current = setInterval(() => {
@@ -396,6 +404,8 @@ useEffect(() => {
       console.error('Failed to register point:', error);
     }
 
+    setScoreBurst(n => n + 1);
+
     const newAvalWords = availableWords.filter((_, index) => index !== currentWordIndex);
     setAvailableWords(newAvalWords);
 
@@ -505,29 +515,49 @@ useEffect(() => {
   // Check if we have all required data
   const hasRequiredData = currentGame && currentGame.teams && currentGame.words && contestants.length > 0;
 
+  // Countdown ring geometry
+  const RING_R = 86;
+  const RING_C = 2 * Math.PI * RING_R;
+  const ringProgress = roundDuration > 0 ? Math.max(0, Math.min(1, timeLeft / roundDuration)) : 0;
+  const ringOffset = RING_C * (1 - ringProgress);
+  const ringTone =
+    timeLeft <= 10 ? 'timer-ring__fill--danger' : timeLeft <= 25 ? 'timer-ring__fill--warn' : '';
+
   if (gameState === 'finished') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: hostTeamColor }}>
-        <div className="bg-white rounded-3xl shadow-2xl p-8 text-center max-w-md w-full">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">Game Over!</h1>
-          <p className="text-gray-600 mb-6">Thanks for playing Associations!</p>
-          <button
-            onClick={handleLeaveGame}
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-xl transition-colors"
-          >
+      <div
+        className="game-screen flex items-center justify-center p-5"
+        style={{ backgroundColor: hostTeamColor }}
+      >
+        <div className="card max-w-sm w-full text-center anim-pop">
+          <div className="text-6xl mb-3 anim-bob" aria-hidden="true">🏆</div>
+          <h1 className="font-display text-3xl font-bold mb-2" style={{ color: 'var(--ink)' }}>
+            Game Over!
+          </h1>
+          <p className="font-bold mb-6" style={{ color: 'var(--ink-soft)' }}>
+            Thanks for playing Associations!
+          </p>
+          <button onClick={handleLeaveGame} className="btn btn--grape btn--lg btn--block">
             Back to Menu
           </button>
         </div>
+        <Confetti key="finish" pieces={40} />
       </div>
     );
   }
 
   if (!hasRequiredData) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: hostTeamColor }}>
-        <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading game data...</p>
+      <div
+        className="game-screen flex items-center justify-center"
+        style={{ backgroundColor: hostTeamColor }}
+      >
+        <div className="card text-center anim-pop">
+          <div
+            className="w-12 h-12 mx-auto mb-4 rounded-full border-4 anim-spin-slow"
+            style={{ borderColor: '#e7e1ff', borderTopColor: 'var(--grape)' }}
+          />
+          <p className="font-bold" style={{ color: 'var(--ink-soft)' }}>Loading game data...</p>
         </div>
       </div>
     );
@@ -542,28 +572,63 @@ useEffect(() => {
       onTouchEnd={() => roundActive && handleScreenHold(false)}
       style={{ userSelect: 'none', backgroundColor: hostTeamColor }}
     >
-      
-      {/* Top section with current player info */}
+      {/* Soft vignette so white text stays readable on the lighter team colours */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.14), transparent 60%), linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.22) 100%)'
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Waiting for the host to start this contestant's round */}
       {gameState === 'waiting' && (
-        <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-4">
-          <div className="text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">Next Player</h2>
-            <div 
-              className="bg-white bg-opacity-20 backdrop-blur-sm rounded-2xl p-6 mb-6"
-              style={currentContestant?.color ? { 
-                backgroundColor: mapBulgarianColorToHex(currentContestant.color) + '40',
-                borderColor: 'white',
-                borderWidth: '2px'
-              } : {}}
-            >
-              <p className="text-2xl font-semibold mb-2">{currentContestant?.name}</p>
-              <p className="text-lg opacity-90">Team {currentContestant?.color}</p>
-              <p className="text-sm opacity-75 mt-2">Round {currentRound + 1}/3</p>
+        <div className="flex-1 min-h-0 overflow-y-auto flex items-center justify-center p-5 relative">
+          <div className="text-center w-full max-w-sm">
+            <p className="text-white/80 text-sm font-extrabold uppercase tracking-widest mb-4 anim-fade">
+              Next Player
+            </p>
+
+            <div className="glass p-6 mb-7 anim-pop">
+              <div
+                className="avatar mx-auto mb-3 anim-bob"
+                style={{
+                  background: mapBulgarianColorToHex(currentContestant?.teamColor),
+                  width: '3.5rem',
+                  height: '3.5rem',
+                  fontSize: '1.375rem'
+                }}
+              >
+                {(currentContestant?.name || '?').trim().charAt(0).toUpperCase()}
+              </div>
+
+              <p className="font-display text-3xl font-bold text-white mb-1 break-words">
+                {currentContestant?.name}
+              </p>
+              <p className="text-white/85 font-bold">Team {currentContestant?.color}</p>
+
+              <div className="flex justify-center gap-1.5 mt-4" aria-hidden="true">
+                {[1, 2, 3].map((r) => (
+                  <span
+                    key={r}
+                    className="h-1.5 rounded-full transition-all duration-500"
+                    style={{
+                      width: r === currentRound + 1 ? '2rem' : '0.75rem',
+                      background: r <= currentRound + 1 ? '#fff' : 'rgba(255,255,255,0.35)'
+                    }}
+                  />
+                ))}
+              </div>
+              <p className="text-white/70 text-xs font-bold mt-2">Round {currentRound + 1}/3</p>
             </div>
+
             <button
               onClick={startContestantRound}
-              className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-8 rounded-2xl text-xl transition-all transform hover:scale-105"
+              className="btn btn--grape btn--lg btn--block anim-pop"
+              style={{ animationDelay: '0.15s' }}
             >
+              <span className="btn__sheen" />
               Start Round
             </button>
           </div>
@@ -574,15 +639,22 @@ useEffect(() => {
       {gameState === 'playing' && (
         <>
           {/* Current player indicator */}
-          <div className="absolute top-6 left-6 z-10">
-            <div
-              className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl px-4 py-2"
-              style={currentContestant?.teamColor ? {
-                borderLeft: `4px solid ${mapBulgarianColorToHex(currentContestant.teamColor)}`
-              } : {}}
-            >
-              <p className="text-white font-semibold">{currentContestant?.name}</p>
-              <p className="text-white text-sm opacity-75">Team {currentContestant?.teamIndex}</p>
+          <div className="absolute top-5 left-5 z-10 anim-rise">
+            <div className="glass px-3 py-2 flex items-center gap-2">
+              <span
+                className="avatar"
+                style={{ background: mapBulgarianColorToHex(currentContestant?.teamColor), width: '1.75rem', height: '1.75rem', fontSize: '0.75rem' }}
+              >
+                {(currentContestant?.name || '?').trim().charAt(0).toUpperCase()}
+              </span>
+              <span className="game-chip__text">
+                <span className="block text-white font-extrabold text-sm leading-tight">
+                  {currentContestant?.name}
+                </span>
+                <span className="block text-white/70 text-xs font-bold leading-tight">
+                  Round {currentRound + 1}/3
+                </span>
+              </span>
             </div>
           </div>
 
@@ -591,11 +663,39 @@ useEffect(() => {
               pushed off the screen. */}
           <div className="flex-1 min-h-0 relative">
             {/* Timer: centred, or moved up while a word is on screen */}
-            <div className={`game-timer-wrap absolute left-1/2 transform -translate-x-1/2 transition-all duration-300 ${
+            <div className={`game-timer-wrap absolute left-1/2 transform -translate-x-1/2 transition-all duration-500 ${
               wordVisible || holdStarted ? 'game-timer-wrap--raised top-24' : 'top-1/2 -translate-y-1/2'
             }`}>
-              <div className={`text-center ${timeLeft <= 10 ? 'text-red-300' : 'text-white'}`}>
-                <div className="game-timer text-6xl font-bold">
+              <div className="relative flex items-center justify-center">
+                {/* Ring drains as the round runs down */}
+                <svg
+                  className="timer-ring absolute"
+                  width="196"
+                  height="196"
+                  viewBox="0 0 196 196"
+                  style={{ transform: 'rotate(-90deg)' }}
+                  aria-hidden="true"
+                >
+                  <circle className="timer-ring__track" cx="98" cy="98" r={RING_R} fill="none" strokeWidth="7" />
+                  <circle
+                    className={`timer-ring__fill ${ringTone}`}
+                    cx="98"
+                    cy="98"
+                    r={RING_R}
+                    fill="none"
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                    strokeDasharray={RING_C}
+                    strokeDashoffset={ringOffset}
+                  />
+                </svg>
+
+                <div
+                  className={`game-timer font-display text-6xl font-bold tabular-nums ${
+                    timeLeft <= 10 ? 'text-red-200 anim-breathe' : 'text-white'
+                  }`}
+                  style={{ textShadow: '0 4px 18px rgba(0,0,0,0.3)' }}
+                >
                   {formatTime(timeLeft)}
                 </div>
               </div>
@@ -603,49 +703,57 @@ useEffect(() => {
 
             {/* Word in the center when visible */}
             {wordVisible && currentWord && (
-              <div className="absolute top-1/2 left-1/2 w-full px-6 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300">
-                <div className="text-center text-white">
-                  <div className="game-word text-4xl sm:text-5xl font-bold bg-black bg-opacity-30 backdrop-blur-sm rounded-2xl px-6 py-5 break-words">
-                    {currentWord}
-                  </div>
+              <div className="absolute top-1/2 left-1/2 w-full px-5 transform -translate-x-1/2 -translate-y-1/2">
+                <div
+                  key={currentWord}
+                  className="game-word font-display text-4xl sm:text-5xl font-bold text-center text-white rounded-3xl px-6 py-6 break-words mx-auto max-w-md"
+                  style={{
+                    background: 'rgba(15,10,40,0.42)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    boxShadow: '0 20px 50px -18px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.18)'
+                  }}
+                >
+                  {currentWord}
                 </div>
               </div>
+            )}
+
+            {/* "+1" flying up after a correct guess */}
+            {scoreBurst > 0 && (
+              <div key={scoreBurst} className="score-fly" aria-hidden="true">+1</div>
             )}
           </div>
 
           {/* Bottom buttons - in normal flow, so always on screen */}
-          <div className="game-screen__bottom shrink-0 px-6 pt-2">
-            <div className="flex space-x-4 max-w-md mx-auto">
-              <button
-                onClick={handleSkipWord}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-4 px-6 rounded-2xl text-lg transition-all transform active:scale-95"
-              >
+          <div className="game-screen__bottom shrink-0 px-5 pt-2 relative z-10">
+            <div className="flex gap-3 max-w-md mx-auto">
+              <button onClick={handleSkipWord} className="btn btn--slate flex-1">
+                <span aria-hidden="true">⏭</span>
                 Skip Word
               </button>
-              <button
-                onClick={handleNextWord}
-                className="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-6 rounded-2xl text-lg transition-all transform active:scale-95"
-              >
+              <button onClick={handleNextWord} className="btn btn--mint flex-1">
+                <span aria-hidden="true">✓</span>
                 Next Word
               </button>
             </div>
 
-            {/* Instructions */}
-            <p className="text-center text-white text-sm mt-3 opacity-75">
+            <p className="text-center text-white/70 text-xs font-bold mt-3">
               Hold anywhere to reveal word
             </p>
           </div>
+
+          {/* Confetti replays on each new point because the key changes */}
+          {scoreBurst > 0 && <Confetti key={`c-${scoreBurst}`} pieces={22} />}
         </>
       )}
 
       {/* Exit button */}
-      <button
-        onClick={handleLeaveGame}
-        className="absolute top-6 right-6 z-10 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-xl transition-colors"
-      >
-        Exit
-      </button>
-
+      <div className="absolute top-5 right-5 z-20">
+        <button onClick={handleLeaveGame} className="btn btn--cherry btn--sm">
+          Exit
+        </button>
+      </div>
     </div>
   );
 };

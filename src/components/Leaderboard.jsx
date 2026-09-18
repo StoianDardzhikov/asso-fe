@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from './GameContext';
 import useRoundTimer, { formatTime } from '../hooks/useRoundTimer';
 
@@ -39,6 +39,33 @@ const Leaderboard = ({ onBack }) => {
   const roundFinished = Boolean(roundState?.finished);
   const isLowOnTime = roundActive && secondsLeft <= 10;
 
+  // Countdown ring geometry
+  const RING_R = 64;
+  const RING_C = 2 * Math.PI * RING_R;
+  const totalSeconds = roundState?.totalSeconds || 0;
+  const ringProgress = totalSeconds > 0 ? Math.max(0, Math.min(1, secondsLeft / totalSeconds)) : 0;
+  const ringOffset = RING_C * (1 - ringProgress);
+  const ringTone = isLowOnTime ? 'timer-ring__fill--danger' : secondsLeft <= 25 && roundActive ? 'timer-ring__fill--warn' : '';
+
+  // Remember the previous score per team so a change can be animated.
+  const myTotal = sortedTeams.reduce((sum, t) => sum + (t.points || 0), 0);
+  const prevTotalRef = useRef(myTotal);
+  const [pointsBumped, setPointsBumped] = useState(0);
+
+  useEffect(() => {
+    if (myTotal !== prevTotalRef.current) {
+      prevTotalRef.current = myTotal;
+      setPointsBumped(n => n + 1);
+    }
+  }, [myTotal]);
+
+  const avatarColor = (name = '') => {
+    const palette = ['#7c3aed', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#ef4444'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    return palette[hash % palette.length];
+  };
+
   const handleLeaveGame = () => {
     sendWebSocketMessage({
       type: 'player_leave',
@@ -53,129 +80,200 @@ const Leaderboard = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative p-4" style={{ backgroundColor: userTeamColor }}>
-      
-      {/* Header */}
-      <div className="text-center mb-6 pt-8">
-        <h1 className="text-4xl font-bold text-white mb-2">Таблица с резултати</h1>
-        <p className="text-white text-lg opacity-90">
-          Game ID: <span className="font-mono font-bold">{user.gameId}</span>
-        </p>
-        <p className="text-white text-sm opacity-75 mt-1">
-          Вие сте: <span className="font-bold">{user.name}</span>
-        </p>
-        <div className="flex items-center justify-center mt-2">
-          <div className={`w-2 h-2 rounded-full mr-2 ${wsConnected ? 'bg-green-400' : 'bg-yellow-300'}`}></div>
-          <span className="text-white text-xs opacity-75">
-            {wsConnected ? 'Свързани' : 'Обновяване на всеки няколко секунди'}
-          </span>
-        </div>
-      </div>
+    <div
+      className="min-h-screen flex flex-col relative p-4"
+      style={{ backgroundColor: userTeamColor }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(120% 70% at 50% 0%, rgba(255,255,255,0.16), transparent 62%), linear-gradient(180deg, transparent 45%, rgba(0,0,0,0.25) 100%)'
+        }}
+        aria-hidden="true"
+      />
 
-      {/* Таймер на текущия рунд */}
-      <div className="max-w-2xl mx-auto w-full mb-4">
-        <div className="bg-black bg-opacity-25 backdrop-blur-sm rounded-3xl p-5 text-center text-white">
+      <div className="above w-full max-w-lg mx-auto flex-1 flex flex-col">
+
+        {/* Header */}
+        <div className="text-center pt-6 pb-4 anim-rise">
+          <h1 className="font-display text-3xl font-bold text-white mb-2">Резултати</h1>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <span className="pill" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>
+              Игра #{user.gameId}
+            </span>
+            <span className="pill" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>
+              🙋 {user.name}
+            </span>
+            <span className="pill" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}>
+              <span className={wsConnected ? 'live-dot' : 'live-dot live-dot--idle'} />
+              {wsConnected ? 'На живо' : 'Обновяване'}
+            </span>
+          </div>
+        </div>
+
+        {/* Таймер на текущия рунд */}
+        <div className="glass p-5 text-center text-white mb-4 anim-pop">
           {roundFinished ? (
-            <p className="text-2xl font-bold">🏁 Играта приключи</p>
+            <div className="py-2">
+              <div className="text-4xl mb-2 anim-bob" aria-hidden="true">🏁</div>
+              <p className="font-display text-2xl font-bold">Играта приключи</p>
+            </div>
           ) : (
             <>
-              <p className="text-sm uppercase tracking-wide opacity-75 mb-1">
+              <p className="text-xs font-extrabold uppercase tracking-widest text-white/75 mb-3">
                 {roundActive ? 'Време за рунда' : 'Изчакване на следващия играч'}
               </p>
-              <div
-                className={`font-bold leading-none ${isLowOnTime ? 'text-red-300 animate-pulse' : 'text-white'} text-6xl sm:text-7xl`}
-              >
-                {formatTime(secondsLeft)}
+
+              <div className="relative flex items-center justify-center mx-auto" style={{ width: 150, height: 150 }}>
+                <svg
+                  className="absolute"
+                  width="150"
+                  height="150"
+                  viewBox="0 0 150 150"
+                  style={{ transform: 'rotate(-90deg)' }}
+                  aria-hidden="true"
+                >
+                  <circle className="timer-ring__track" cx="75" cy="75" r={RING_R} fill="none" strokeWidth="6" />
+                  <circle
+                    className={`timer-ring__fill ${ringTone}`}
+                    cx="75"
+                    cy="75"
+                    r={RING_R}
+                    fill="none"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray={RING_C}
+                    strokeDashoffset={ringOffset}
+                  />
+                </svg>
+
+                <span
+                  className={`font-display text-5xl font-bold tabular-nums ${
+                    isLowOnTime ? 'text-red-200 anim-breathe' : 'text-white'
+                  }`}
+                  style={{ textShadow: '0 4px 16px rgba(0,0,0,0.3)' }}
+                >
+                  {formatTime(secondsLeft)}
+                </span>
               </div>
+
               {roundState?.contestantName && (
-                <p className="mt-3 text-base">
-                  🎤 Обяснява: <span className="font-bold">{roundState.contestantName}</span>
-                  {roundState.teamColor && (
-                    <span className="opacity-90"> ({roundState.teamColor})</span>
-                  )}
+                <p className="mt-3 font-bold text-sm">
+                  🎤 Обяснява <span className="font-extrabold">{roundState.contestantName}</span>
+                  {roundState.teamColor && <span className="text-white/75"> ({roundState.teamColor})</span>}
                 </p>
               )}
+
               {roundState?.round > 0 && (
-                <p className="text-xs opacity-75 mt-1">Рунд {Math.min(roundState.round, 3)}/3</p>
+                <div className="flex justify-center gap-1.5 mt-3" aria-hidden="true">
+                  {[1, 2, 3].map((r) => (
+                    <span
+                      key={r}
+                      className="h-1.5 rounded-full transition-all duration-500"
+                      style={{
+                        width: r === Math.min(roundState.round, 3) ? '2rem' : '0.75rem',
+                        background: r <= Math.min(roundState.round, 3) ? '#fff' : 'rgba(255,255,255,0.35)'
+                      }}
+                    />
+                  ))}
+                </div>
               )}
             </>
           )}
         </div>
-      </div>
 
-      {/* Teams Leaderboard */}
-      <div className="flex-1 max-w-2xl mx-auto w-full">
-        <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-3xl shadow-2xl p-6">
-          <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">Класиране на отборите</h2>
-          
+        {/* Класиране */}
+        <div className="card card--tight flex-1 anim-pop" style={{ animationDelay: '0.08s' }}>
+          <h2 className="font-display text-lg font-bold text-center mb-4" style={{ color: 'var(--ink)' }}>
+            Класиране
+          </h2>
+
           {sortedTeams.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-600">Няма налични данни за отборите</p>
+              <div className="text-4xl mb-2" aria-hidden="true">⏳</div>
+              <p className="font-bold text-sm" style={{ color: 'var(--ink-soft)' }}>
+                Няма данни за отборите
+              </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {sortedTeams.map((team, index) => {
                 const teamColor = mapBulgarianColorToHex(team.color);
                 const isUserTeam = team.players?.some(player => player.name === user.name);
                 const position = index + 1;
-                
+                const topScore = Math.max(1, ...sortedTeams.map(t => t.points || 0));
+                const barWidth = `${Math.round(((team.points || 0) / topScore) * 100)}%`;
+
                 return (
-                  <div 
+                  <div
                     key={team.color || index}
-                    className={`rounded-2xl p-4 transition-all duration-300 ${
-                      isUserTeam 
-                        ? 'ring-4 ring-yellow-400 ring-opacity-75 shadow-lg transform scale-105' 
-                        : 'shadow-md hover:shadow-lg'
-                    }`}
-                    style={{ 
-                      backgroundColor: teamColor + '20',
+                    className={`rank-row ${isUserTeam ? 'rank-row--mine' : ''} ${position === 1 ? 'rank-row--first' : ''}`}
+                    style={{
+                      background: `${teamColor}18`,
                       borderLeft: `6px solid ${teamColor}`
                     }}
                   >
-                    <div className="flex items-center justify-between">
-                      
-                      {/* Position and Team Info */}
-                      <div className="flex items-center space-x-4">
-                        <div className="text-2xl font-bold text-gray-700 w-8">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xl font-extrabold w-7 text-center shrink-0" style={{ color: 'var(--ink-soft)' }}>
                           {position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `#${position}`}
-                        </div>
-                        
-                        <div>
-                          <div className="flex items-center space-x-2 mb-1">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: teamColor }}></div>
-                            <h3 className="text-lg font-bold text-gray-800">
-                              Отбор {team.color}
+                        </span>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-display font-bold truncate" style={{ color: 'var(--ink)' }}>
+                              {team.color}
                             </h3>
                             {isUserTeam && (
-                              <span className="bg-yellow-400 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">
-                                ВАШИЯТ ЕКИП
+                              <span className="pill shrink-0" style={{ background: '#fef08a', color: '#854d0e', fontSize: '0.6875rem' }}>
+                                ТИ
                               </span>
                             )}
                           </div>
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-wrap items-center gap-1">
                             {team.players?.map((player, playerIndex) => (
-                              <span 
+                              <span
                                 key={player.id || player.name || playerIndex}
-                                className={`text-xs px-2 py-1 rounded-full ${
-                                  player.name === user.name 
-                                    ? 'bg-yellow-200 text-yellow-800 font-bold'
-                                    : 'bg-gray-200 text-gray-700'
-                                }`}
+                                className="inline-flex items-center gap-1 pr-2 rounded-full"
+                                style={{
+                                  background: player.name === user.name ? '#fef08a' : '#f1f5f9',
+                                  fontSize: '0.6875rem',
+                                  fontWeight: 800,
+                                  color: player.name === user.name ? '#854d0e' : '#475569'
+                                }}
                               >
+                                <span
+                                  className="avatar"
+                                  style={{ background: avatarColor(player.name), width: '1.25rem', height: '1.25rem', fontSize: '0.625rem' }}
+                                >
+                                  {(player.name || '?').trim().charAt(0).toUpperCase()}
+                                </span>
                                 {player.name}
                               </span>
                             ))}
                           </div>
                         </div>
                       </div>
-                      
-                      {/* Points */}
-                      <div className="text-right">
-                        <div className="text-3xl font-bold text-gray-800">
+
+                      <div className="text-right shrink-0">
+                        <div
+                          key={`${team.color}-${team.points}-${pointsBumped}`}
+                          className="font-display text-3xl font-bold anim-punch leading-none"
+                          style={{ color: teamColor }}
+                        >
                           {team.points || 0}
                         </div>
-                        <div className="text-sm text-gray-600">точки</div>
+                        <div className="text-xs font-bold" style={{ color: 'var(--ink-soft)' }}>точки</div>
                       </div>
+                    </div>
+
+                    {/* Relative score bar */}
+                    <div className="mt-2.5 h-1.5 rounded-full overflow-hidden" style={{ background: `${teamColor}22` }}>
+                      <div
+                        className="h-1.5 rounded-full transition-all duration-700"
+                        style={{ width: barWidth, background: teamColor }}
+                      />
                     </div>
                   </div>
                 );
@@ -183,31 +281,17 @@ const Leaderboard = ({ onBack }) => {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Game Status */}
-      <div className="mt-6 text-center">
-        <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 text-white">
-          <p className="text-sm mb-2">🎮 Играта тече</p>
-          <p className="text-xs opacity-75">
-            Водещият управлява играта. Точките се обновяват автоматично!
+        {/* Footer */}
+        <div className="text-center py-4">
+          <p className="text-white/75 text-xs font-bold mb-3">
+            Точките се обновяват автоматично
+            {lastSyncAt && <> · {new Date(lastSyncAt).toLocaleTimeString()}</>}
           </p>
-          {lastSyncAt && (
-            <p className="text-xs opacity-75 mt-1">
-              Последно обновяване: {new Date(lastSyncAt).toLocaleTimeString()}
-            </p>
-          )}
+          <button onClick={handleLeaveGame} className="btn btn--ghost btn--sm">
+            Напусни играта
+          </button>
         </div>
-      </div>
-
-      {/* Leave Game Button */}
-      <div className="mt-4 text-center">
-        <button
-          onClick={handleLeaveGame}
-          className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl transition-colors"
-        >
-          Напусни Играта
-        </button>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from './GameContext';
+import Backdrop from './Backdrop';
 import { API_BASE } from '../config';
 
 const Lobby = ({ onBack, onStartGame }) => {
@@ -75,12 +76,40 @@ const Lobby = ({ onBack, onStartGame }) => {
     onBack();
   };
 
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(String(user.gameId));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch (error) {
+      console.warn('Clipboard unavailable:', error);
+    }
+  };
+
+  // Stable colour per name, so a player keeps the same avatar between renders.
+  const avatarColor = (name = '') => {
+    const palette = ['#7c3aed', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#ef4444'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    return palette[hash % palette.length];
+  };
+
   const isLoading = !isInitialized || (user.gameId && !currentGame && !gameCreationData);
 
-  const gameInfo = gameUpdates || currentGame || {
-    categories: gameCreationData?.categories || [],
-    playersPerTeam: gameCreationData?.playersPerTeam || 2,
-    players: []
+  const gameInfoSource = gameUpdates || currentGame || {};
+  const gameInfo = {
+    ...gameInfoSource,
+    // The backend field is `category`; gameCreationData uses `categories`.
+    categories:
+      gameInfoSource.categories ||
+      gameInfoSource.category ||
+      gameCreationData?.categories ||
+      [],
+    playersPerTeam:
+      gameInfoSource.playersPerTeam || gameCreationData?.playersPerTeam || 2,
+    players: gameInfoSource.players || []
   };
 
   const players = (gameInfo.players || []).map(player => {
@@ -88,56 +117,73 @@ const Lobby = ({ onBack, onStartGame }) => {
     return { name: player.name, id: player.id || player.name, role: player.role || (player.name === user.name ? user.role : 'player') };
   });
 
-  const maxPlayers = gameInfo.playersPerTeam * 4; // Максимум 4 отбора
   const currentPlayerCount = players.length;
+  const playersLabel = currentPlayerCount === 1 ? 'играч' : 'играчи';
+  const categoryCount = gameInfo.categories?.length || 0;
+  const categoriesLabel = categoryCount === 1 ? 'категория' : 'категории';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-3 sm:p-4 lg:p-6">
-      <div className="max-w-2xl mx-auto">
-        
+    <div
+      className="min-h-screen p-4 relative overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #6d28d9 0%, #4f46e5 45%, #1e3a8a 100%)' }}
+    >
+      <Backdrop palette="purple" />
+
+      <div className="above max-w-lg mx-auto">
+
         {/* Header */}
-        <div className="text-center mb-6 sm:mb-8 pt-4 sm:pt-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Лоби на играта</h1>
-          <p className="text-lg sm:text-xl text-blue-100">
-            Код на играта: <span className="font-mono font-bold">{user.gameId}</span>
-          </p>
-          <p className="text-blue-200 text-sm sm:text-base mt-1">
-            Вие сте <span className="font-bold capitalize text-yellow-300">{user.role}</span>
-          </p>
-          <div className="flex items-center justify-center mt-2">
-            <div className={`w-2 h-2 rounded-full mr-2 ${wsConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
-            <span className="text-blue-200 text-xs">{wsConnected ? 'Свързани' : 'Свързване...'}</span>
+        <div className="text-center pt-8 pb-6 anim-rise">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-white mb-3">
+            Лоби
+          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <span className="pill" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }}>
+              {user.role === 'host' ? '👑 Водещ' : '🙋 Играч'}
+            </span>
+            <span className="pill" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }}>
+              <span className={wsConnected ? 'live-dot' : 'live-dot live-dot--idle'} />
+              {wsConnected ? 'На живо' : 'Обновяване'}
+            </span>
           </div>
         </div>
 
-        {/* Loading */}
         {isLoading ? (
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-8 text-center mb-6">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Зареждане на данни за играта...</p>
+          <div className="card text-center py-12 anim-pop">
+            <div
+              className="w-12 h-12 mx-auto mb-4 rounded-full border-4 anim-spin-slow"
+              style={{ borderColor: '#e7e1ff', borderTopColor: 'var(--grape)' }}
+            />
+            <p className="font-bold" style={{ color: 'var(--ink-soft)' }}>
+              Зареждане...
+            </p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-6">
-            
-            {/* Game Info */}
-            <div className="text-center mb-6">
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-                Associ<span className="text-purple-600">ations</span>
-              </h2>
-              <div className="flex justify-center items-center space-x-6 text-sm text-gray-600">
-                <span>👥 {gameInfo.playersPerTeam} на отбор</span>
-                <span>🎯 {currentPlayerCount} играчи</span>
-                {gameInfo.categories && <span>📚 {gameInfo.categories.length} категории</span>}
-              </div>
+          <div className="card anim-pop mb-5">
+
+            {/* Game info */}
+            <div className="flex flex-wrap justify-center gap-2 mb-6">
+              <span className="pill" style={{ background: '#ede9fe', color: '#6d28d9' }}>
+                👥 {gameInfo.playersPerTeam} на отбор
+              </span>
+              <span className="pill" style={{ background: '#d1fae5', color: '#047857' }}>
+                🎯 {currentPlayerCount} {playersLabel}
+              </span>
+              {gameInfo.categories && (
+                <span className="pill" style={{ background: '#fef3c7', color: '#b45309' }}>
+                  📚 {categoryCount} {categoriesLabel}
+                </span>
+              )}
             </div>
 
             {/* Categories */}
             {gameInfo.categories?.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 text-center">📚 Категории</h3>
+                <p className="label text-center">Категории</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {gameInfo.categories.map((cat, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">{cat}</span>
+                    <span key={idx} className="pill anim-pop" style={{ background: '#f7f5ff', color: 'var(--grape)', animationDelay: `${idx * 0.05}s` }}>
+                      {cat}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -145,23 +191,43 @@ const Lobby = ({ onBack, onStartGame }) => {
 
             {/* Players */}
             <div className="mb-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 text-center">👥 Играчите ({currentPlayerCount})</h3>
+              <p className="label text-center">В стаята ({currentPlayerCount})</p>
+
               {currentPlayerCount === 0 ? (
-                <p className="text-center text-gray-500 text-sm py-4">Няма играчи</p>
+                <p className="text-center text-sm font-bold py-4" style={{ color: 'var(--ink-soft)' }}>
+                  Още никой не се е присъединил
+                </p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {players.map((p, i) => {
                     const isHost = p.role === 'host' || (p.name === user.name && user.role === 'host');
                     const isCurrentUser = p.name === user.name;
                     return (
-                      <div key={p.id || p.name || i} className="flex items-center justify-center">
-                        <div className={`px-4 py-2 rounded-xl font-medium text-sm sm:text-base w-full text-center transition-all ${
-                          isHost ? 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300' :
-                          isCurrentUser ? 'bg-blue-100 text-blue-800 border-2 border-blue-300' :
-                          'bg-gray-100 text-gray-700 border-2 border-gray-200'
-                        }`}>
-                          {isHost && '👑 '} {p.name} {isHost && '(Водещ)'} {isCurrentUser && !isHost && '(Вие)'}
-                        </div>
+                      <div
+                        key={p.id || p.name || i}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl anim-pop"
+                        style={{
+                          background: isCurrentUser ? '#f7f5ff' : '#f8fafc',
+                          border: `2.5px solid ${isCurrentUser ? '#d8d0ff' : '#eef2f7'}`,
+                          animationDelay: `${i * 0.06}s`
+                        }}
+                      >
+                        <span className="avatar" style={{ background: avatarColor(p.name) }}>
+                          {(p.name || '?').trim().charAt(0).toUpperCase()}
+                        </span>
+                        <span className="min-w-0 flex-1 text-left">
+                          <span
+                            className="block text-sm font-extrabold truncate"
+                            style={{ color: 'var(--ink)' }}
+                          >
+                            {p.name}
+                          </span>
+                          {(isHost || isCurrentUser) && (
+                            <span className="block text-xs font-bold" style={{ color: 'var(--ink-soft)' }}>
+                              {isHost ? '👑 Водещ' : 'Ти'}
+                            </span>
+                          )}
+                        </span>
                       </div>
                     );
                   })}
@@ -169,51 +235,62 @@ const Lobby = ({ onBack, onStartGame }) => {
               )}
             </div>
 
-            {/* Status */}
-            <div className="text-center mb-6 p-4 bg-blue-50 rounded-xl">
-              {user.role === 'host' ? (
-                <div>
-                  <p className="text-blue-800 font-medium mb-2">🎮 Вие сте водещ!</p>
-                  <p className="text-blue-600 text-sm">{currentPlayerCount >= 2 ? 'Готови за стартиране на играта!' : 'Очакваме още играчи...'}</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-blue-800 font-medium mb-2">⏳ Изчакване на водещ...</p>
-                  <p className="text-blue-600 text-sm">Водещият ще стартира играта, когато е готов.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Buttons */}
-            <div className="space-y-3">
-              {user.role === 'host' && (
-                <button
-                  onClick={handleStartGame}
-                  disabled={isStarting || currentPlayerCount < 2}
-                  className={`w-full py-3 sm:py-4 px-6 rounded-xl sm:rounded-2xl font-bold text-lg sm:text-xl transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation ${
-                    !isStarting && currentPlayerCount >= 2 ? 'bg-green-500 hover:bg-green-600 active:bg-green-700 text-white shadow-lg hover:shadow-xl' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {isStarting ? 'Стартиране...' : currentPlayerCount < 2 ? '⏳ Нужни са още играчи' : '🚀 Стартирай играта'}
-                </button>
-              )}
+            {/* Status + actions */}
+            {user.role === 'host' ? (
               <button
-                onClick={handleLeaveLobby}
-                className="w-full bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 font-bold py-2 sm:py-3 px-6 rounded-xl sm:rounded-2xl text-base sm:text-lg transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation"
+                onClick={handleStartGame}
+                disabled={isStarting || currentPlayerCount < 2}
+                className="btn btn--mint btn--lg btn--block"
               >
-                ← Напусни лобито
+                {isStarting ? (
+                  <>
+                    <span className="inline-block w-5 h-5 rounded-full border-2 border-white border-t-transparent anim-spin-slow" />
+                    Стартирам...
+                  </>
+                ) : currentPlayerCount < 2 ? (
+                  <>⏳ Нужни са още играчи</>
+                ) : (
+                  <>🚀 Стартирай играта</>
+                )}
               </button>
-            </div>
+            ) : (
+              <div
+                className="text-center py-4 px-4 rounded-2xl"
+                style={{ background: '#f7f5ff', border: '2.5px solid #e7e1ff' }}
+              >
+                <div className="flex justify-center gap-1.5 mb-2" aria-hidden="true">
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      className="w-2.5 h-2.5 rounded-full anim-breathe"
+                      style={{ background: 'var(--grape)', animationDelay: `${i * 0.2}s` }}
+                    />
+                  ))}
+                </div>
+                <p className="font-extrabold text-sm" style={{ color: 'var(--ink)' }}>
+                  Чакаме водещия
+                </p>
+                <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--ink-soft)' }}>
+                  Той ще стартира, когато всички са готови
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Share Code */}
-        <div className="text-center">
-          <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-white">
-            <p className="text-sm sm:text-base mb-2">Споделете този код с приятели:</p>
-            <p className="font-mono font-bold text-xl sm:text-2xl tracking-wider">{user.gameId}</p>
-            {wsConnected && <p className="text-xs text-blue-200 mt-1">Реално-времеви обновления 🔥</p>}
-          </div>
+        {/* Share code */}
+        <button onClick={copyCode} className="glass w-full p-4 text-center text-white mb-4 anim-pop block">
+          <p className="text-xs font-bold text-indigo-100 mb-1">
+            {copied ? '✅ Копиран!' : 'Сподели кода с приятели'}
+          </p>
+          <p className="font-display text-4xl font-bold tracking-widest">{user.gameId}</p>
+          <p className="text-xs font-bold text-indigo-200 mt-1">Натисни, за да копираш</p>
+        </button>
+
+        <div className="text-center pb-8">
+          <button onClick={handleLeaveLobby} className="btn btn--ghost btn--sm">
+            ← Напусни лобито
+          </button>
         </div>
       </div>
     </div>

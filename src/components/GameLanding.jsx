@@ -1,4 +1,7 @@
 import React from 'react';
+import Backdrop from './Backdrop';
+
+const TITLE = 'Асоциации';
 
 const GameLanding = ({ onCreateGame, onJoinGame, version = "1.1.1" }) => {
   const handleJoinGame = () => {
@@ -12,38 +15,62 @@ const GameLanding = ({ onCreateGame, onJoinGame, version = "1.1.1" }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
-      <div className="text-center max-w-sm sm:max-w-md w-full">
-        {/* Заглавие на играта */}
-        <div className="mb-8 sm:mb-12">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-3 sm:mb-4 tracking-tight">
-            Ассоци
-            <span className="text-yellow-300">ации</span>
+    <div
+      className="min-h-screen flex items-center justify-center p-5 relative overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #6d28d9 0%, #4f46e5 45%, #1e3a8a 100%)' }}
+    >
+      <Backdrop palette="purple" />
+
+      <div className="above text-center max-w-sm w-full">
+
+        {/* Word mark - each letter drops in on its own */}
+        <div className="mb-3 anim-bob">
+          <h1 className="font-display text-5xl sm:text-6xl font-bold text-white leading-none">
+            {TITLE.split('').map((ch, i) => (
+              <span
+                key={i}
+                className="inline-block anim-pop"
+                style={{
+                  animationDelay: `${i * 0.05}s`,
+                  color: i >= 6 ? '#fde047' : undefined,
+                  textShadow: '0 6px 0 rgba(0,0,0,0.18), 0 16px 32px rgba(0,0,0,0.3)'
+                }}
+              >
+                {ch}
+              </span>
+            ))}
           </h1>
         </div>
 
-        {/* Бутони за действие */}
-        <div className="space-y-3 sm:space-y-4 px-2">
-          {/* Бутон "Присъедини се към игра" */}
-          <button
-            onClick={handleJoinGame}
-            className="w-full bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl sm:rounded-2xl text-lg sm:text-xl transition-all duration-200 transform hover:scale-105 hover:shadow-2xl active:scale-95 border-2 sm:border-4 border-green-400 hover:border-green-300 touch-manipulation"
-          >
-            Присъедини се към игра
+        <p
+          className="text-indigo-100 text-base font-bold mb-10 anim-fade"
+          style={{ animationDelay: '0.55s' }}
+        >
+          Обяснявай. Отгатвай. Печели.
+        </p>
+
+        <div className="space-y-4 stagger" style={{ animationDelay: '0.6s' }}>
+          <button onClick={handleJoinGame} className="btn btn--mint btn--lg btn--block">
+            <span className="btn__sheen" />
+            <span aria-hidden="true">🎮</span>
+            Присъедини се
           </button>
 
-          {/* Бутон "Създай игра" */}
-          <button
-            onClick={handleCreateGame}
-            className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl sm:rounded-2xl text-lg sm:text-xl transition-all duration-200 transform hover:scale-105 hover:shadow-2xl active:scale-95 border-2 sm:border-4 border-orange-400 hover:border-orange-300 touch-manipulation"
-          >
+          <button onClick={handleCreateGame} className="btn btn--sun btn--lg btn--block">
+            <span aria-hidden="true">✨</span>
             Създай игра
           </button>
         </div>
+
+        <div className="mt-10 flex items-center justify-center gap-5 text-indigo-200 text-xs font-bold anim-fade"
+             style={{ animationDelay: '0.9s' }}>
+          <span>👥 2+ отбора</span>
+          <span>⏱️ 3 рунда</span>
+          <span>📱 На телефон</span>
+        </div>
       </div>
 
-      {/* Version display */}
-      <div className="absolute bottom-4 right-4 text-white/60 text-xs sm:text-sm font-medium">
+      <div className="absolute bottom-4 right-4 z-10 text-white/50 text-xs font-bold">
         v{version}
       </div>
     </div>

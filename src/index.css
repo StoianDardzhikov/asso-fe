@@ -1,19 +1,465 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================================================================
+   Асоциации - design system
+   ---------------------------------------------------------------------------
+   Everything below is plain CSS so Tailwind's purge never touches it. The app
+   still uses Tailwind utilities for layout; these classes carry the look:
+   chunky pressable buttons, soft cards, and the motion vocabulary.
+   =========================================================================== */
+
+:root {
+  --font-display: 'Comfortaa', 'Nunito', system-ui, sans-serif;
+  --font-ui: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --ink: #2b1b53;
+  --ink-soft: #6b5b95;
+
+  --grape: #7c3aed;
+  --grape-edge: #5b21b6;
+  --berry: #ec4899;
+  --berry-edge: #be185d;
+  --mint: #10b981;
+  --mint-edge: #047857;
+  --sun: #f59e0b;
+  --sun-edge: #b45309;
+  --sky: #3b82f6;
+  --sky-edge: #1d4ed8;
+  --cherry: #ef4444;
+  --cherry-edge: #b91c1c;
+
+  --shadow-card: 0 26px 60px -22px rgba(23, 10, 60, 0.55);
+  --radius-card: 28px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  color: var(--ink);
+  background: #4c1d95;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion vocabulary
+   --------------------------------------------------------------------------- */
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.82) translateY(10px); }
+  70% { opacity: 1; transform: scale(1.04) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(26px, -32px) scale(1.12); }
+  66% { transform: translate(-22px, 20px) scale(0.92); }
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+
+@keyframes punch {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.09); opacity: 0.75; }
+}
+
+@keyframes ping-ring {
+  0% { transform: scale(0.85); opacity: 0.8; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
+@keyframes sheen {
+  0% { transform: translateX(-120%) rotate(18deg); }
+  100% { transform: translateX(320%) rotate(18deg); }
+}
+
+@keyframes fly-up {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); }
+  25% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -90px) scale(1); }
+}
+
+@keyframes confetti-drop {
+  0% { opacity: 1; transform: translate3d(0, -12vh, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate3d(var(--dx, 0), 96vh, 0) rotate(var(--spin, 540deg)); }
+}
+
+@keyframes word-reveal {
+  0% { opacity: 0; transform: scale(0.72) rotate(-2deg); filter: blur(8px); }
+  60% { opacity: 1; transform: scale(1.05) rotate(0.6deg); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1) rotate(0); filter: blur(0); }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+/* Animation helpers */
+.anim-pop { animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.anim-rise { animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-fade { animation: fade-in 0.45s ease both; }
+.anim-bob { animation: bob 3.6s ease-in-out infinite; }
+.anim-wiggle { animation: wiggle 2.4s ease-in-out infinite; }
+.anim-punch { animation: punch 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.anim-breathe { animation: breathe 2s ease-in-out infinite; }
+.anim-spin-slow { animation: spin-slow 1.1s linear infinite; }
+
+/* Children appear one after another. */
+.stagger > * { animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.12s; }
+.stagger > *:nth-child(3) { animation-delay: 0.2s; }
+.stagger > *:nth-child(4) { animation-delay: 0.28s; }
+.stagger > *:nth-child(5) { animation-delay: 0.36s; }
+.stagger > *:nth-child(6) { animation-delay: 0.44s; }
+.stagger > *:nth-child(7) { animation-delay: 0.52s; }
+.stagger > *:nth-child(8) { animation-delay: 0.6s; }
+.stagger > *:nth-child(n + 9) { animation-delay: 0.68s; }
+
+/* ---------------------------------------------------------------------------
+   Backdrop: soft drifting colour blobs behind everything
+   --------------------------------------------------------------------------- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.backdrop__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(46px);
+  opacity: 0.55;
+  animation: drift 20s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Keep real content above the blobs. */
+.above {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons - solid colour with a hard edge underneath, so they physically sink
+   --------------------------------------------------------------------------- */
+
+.btn {
+  --btn-bg: var(--grape);
+  --btn-edge: var(--grape-edge);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-ui);
+  font-weight: 800;
+  font-size: 1.0625rem;
+  line-height: 1.2;
+  color: #fff;
+  background: var(--btn-bg);
+  border: none;
+  border-radius: 18px;
+  padding: 0.95rem 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 6px 0 var(--btn-edge), 0 12px 22px -8px rgba(23, 10, 60, 0.6);
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.12s,
+    filter 0.2s, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  overflow: hidden;
+}
+
+.btn:hover:not(:disabled) { filter: brightness(1.07); }
+
+.btn:active:not(:disabled) {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 var(--btn-edge), 0 3px 8px -4px rgba(23, 10, 60, 0.55);
+}
+
+.btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.btn:disabled {
+  --btn-bg: #cbd5e1;
+  --btn-edge: #94a3b8;
+  color: #f1f5f9;
+  cursor: not-allowed;
+  box-shadow: 0 5px 0 var(--btn-edge);
+  filter: none;
+}
+
+.btn--grape { --btn-bg: var(--grape); --btn-edge: var(--grape-edge); }
+.btn--mint { --btn-bg: var(--mint); --btn-edge: var(--mint-edge); }
+.btn--sun { --btn-bg: var(--sun); --btn-edge: var(--sun-edge); }
+.btn--berry { --btn-bg: var(--berry); --btn-edge: var(--berry-edge); }
+.btn--sky { --btn-bg: var(--sky); --btn-edge: var(--sky-edge); }
+.btn--cherry { --btn-bg: var(--cherry); --btn-edge: var(--cherry-edge); }
+
+.btn--slate {
+  --btn-bg: #64748b;
+  --btn-edge: #3f4c5f;
+}
+
+.btn--ghost {
+  --btn-bg: rgba(255, 255, 255, 0.16);
+  --btn-edge: rgba(0, 0, 0, 0.18);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+
+.btn--quiet {
+  --btn-bg: #eef1f7;
+  --btn-edge: #cdd5e3;
+  color: var(--ink-soft);
+}
+
+.btn--block { width: 100%; }
+
+.btn--lg {
+  font-size: 1.25rem;
+  padding: 1.15rem 1.75rem;
+  border-radius: 22px;
+  box-shadow: 0 8px 0 var(--btn-edge), 0 16px 28px -10px rgba(23, 10, 60, 0.6);
+}
+
+.btn--lg:active:not(:disabled) {
+  transform: translateY(7px);
+  box-shadow: 0 1px 0 var(--btn-edge), 0 4px 10px -5px rgba(23, 10, 60, 0.55);
+}
+
+.btn--sm {
+  font-size: 0.875rem;
+  padding: 0.6rem 1rem;
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--btn-edge), 0 8px 14px -8px rgba(23, 10, 60, 0.5);
+}
+
+.btn--sm:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--btn-edge);
+}
+
+/* A highlight that sweeps across the button once on mount. */
+.btn__sheen {
+  position: absolute;
+  top: -60%;
+  left: 0;
+  width: 45%;
+  height: 220%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: sheen 3.4s ease-in-out 1.2s infinite;
+  pointer-events: none;
+}
+
+/* Small round icon button */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 14px;
+  background: #f1eefe;
+  color: var(--grape);
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.icon-btn:hover { background: #e6e0ff; transform: translateY(-2px); }
+.icon-btn:active { transform: scale(0.92); }
+
+.icon-btn--danger { background: #ffeef0; color: #e11d48; }
+.icon-btn--danger:hover { background: #ffdde2; }
+
+/* ---------------------------------------------------------------------------
+   Surfaces
+   --------------------------------------------------------------------------- */
+
+.card {
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card), inset 0 2px 0 rgba(255, 255, 255, 0.9);
+  padding: 1.5rem;
+}
+
+.card--tight { padding: 1.15rem; }
+
+.glass {
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.24);
+  border-radius: 22px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+/* ---------------------------------------------------------------------------
+   Form fields
+   --------------------------------------------------------------------------- */
+
+.field {
+  width: 100%;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+  background: #f7f5ff;
+  border: 2.5px solid #e7e1ff;
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+
+.field::placeholder { color: #b0a5cd; font-weight: 600; }
+
+.field:focus {
+  outline: none;
+  border-color: var(--grape);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.16);
+}
+
+.field--done {
+  border-color: #a7f3d0;
+  background: #f0fdf9;
+}
+
+.label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin-bottom: 0.5rem;
+}
+
+/* Stepper for "players per team" */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: #f7f5ff;
+  border: 2.5px solid #e7e1ff;
+  border-radius: 18px;
+  padding: 0.5rem;
+}
+
+.stepper__value {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Live indicator
+   --------------------------------------------------------------------------- */
+
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #4ade80;
+}
+
+.live-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: ping-ring 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.live-dot--idle { background: #fbbf24; }
+
+/* ---------------------------------------------------------------------------
+   Confetti (used when a point is scored)
+   --------------------------------------------------------------------------- */
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+
+.confetti__bit {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  animation: confetti-drop 1.5s cubic-bezier(0.25, 0.6, 0.45, 1) forwards;
+}
 
 /* ---------------------------------------------------------------------------
    Play screen
@@ -35,39 +481,125 @@ code {
    inside the viewport. The inset keeps them clear of the iPhone home indicator
    and the Android gesture bar. */
 .game-screen__bottom {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
 }
+
+.game-screen__top {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+}
+
+.game-word {
+  animation: word-reveal 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.score-fly {
+  position: absolute;
+  left: 50%;
+  bottom: 30%;
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  animation: fly-up 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+/* Countdown ring. While a word is on screen the timer shrinks to a bare number
+   at the top of the screen - the ring would otherwise clip the player chip. */
+.timer-ring {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.game-timer-wrap--raised .timer-ring {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.timer-ring__track { stroke: rgba(255, 255, 255, 0.22); }
+.timer-ring__fill {
+  stroke: #fff;
+  transition: stroke-dashoffset 0.9s linear, stroke 0.4s ease;
+}
+.timer-ring__fill--warn { stroke: #fde047; }
+.timer-ring__fill--danger { stroke: #fda4af; }
 
 /* Landscape phones and other short viewports: shrink the big elements instead
    of letting them collide. */
 @media (max-height: 640px) {
-  .game-timer {
-    font-size: 3rem;
-    line-height: 1;
-  }
-
-  .game-word {
-    font-size: 1.875rem;
-    line-height: 2.25rem;
-  }
-
-  .game-screen__bottom {
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
-  }
+  .game-timer { font-size: 3rem; line-height: 1; }
+  .game-word { font-size: 1.875rem; line-height: 2.25rem; }
+  .game-screen__bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem); }
 }
 
 /* Landscape phones are short enough that a centred word would sit on top of the
    raised timer. Tuck the timer right under the top bar instead. The two-class
    selector outranks Tailwind's own top-* utility without needing !important. */
 @media (max-height: 480px) {
-  .game-screen .game-timer-wrap--raised {
-    top: 0.5rem;
+  .game-screen .game-timer-wrap--raised { top: 0.5rem; }
+  /* No room for the name beside the raised timer - keep just the avatar. */
+  .game-chip__text { display: none; }
+  .game-word { font-size: 1.5rem; line-height: 2rem; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+}
+
+/* ---------------------------------------------------------------------------
+   Leaderboard
+   --------------------------------------------------------------------------- */
+
+.rank-row {
+  position: relative;
+  border-radius: 22px;
+  padding: 0.9rem 1rem;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s;
+}
+
+.rank-row--mine {
+  box-shadow: 0 0 0 3px #fbbf24, 0 12px 24px -12px rgba(23, 10, 60, 0.5);
+}
+
+.rank-row--first::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: sheen 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  font-size: 0.8125rem;
+  font-weight: 900;
+  color: #fff;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Respect the OS "reduce motion" setting
+   --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 
-  .game-word {
-    font-size: 1.5rem;
-    line-height: 2rem;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
+  .backdrop__blob,
+  .btn__sheen,
+  .rank-row--first::after,
+  .live-dot::after {
+    animation: none !important;
   }
 }

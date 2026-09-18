@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from './GameContext';
+import Backdrop from './Backdrop';
 import { API_BASE } from '../config';
 
 const JoinGame = ({ onBack, onGameJoined }) => {
@@ -93,159 +94,170 @@ const JoinGame = ({ onBack, onGameJoined }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 p-3 sm:p-4 lg:p-6">
-      <div className="max-w-4xl mx-auto">
+    <div
+      className="min-h-screen p-4 relative overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #6d28d9 0%, #4f46e5 45%, #1e3a8a 100%)' }}
+    >
+      <Backdrop palette="purple" />
+
+      <div className="above max-w-2xl mx-auto">
+
         {/* Заглавие */}
-        <div className="text-center mb-6 sm:mb-8 pt-4 sm:pt-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Присъединяване към Игра</h1>
-          <p className="text-lg sm:text-xl text-blue-100 px-4">Изберете от наличните игри на Associations</p>
+        <div className="text-center pt-8 pb-6 anim-rise">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-white mb-1">
+            Присъедини се
+          </h1>
+          <p className="text-indigo-100 text-sm font-bold">Избери игра от списъка</p>
         </div>
 
         {/* Списък с игри */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6">
+        <div className="card anim-pop mb-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-800">Налични Игри</h2>
-              <p className="text-xs text-gray-500">Намерени {games.length} игри</p>
+              <h2 className="font-display text-xl font-bold" style={{ color: 'var(--ink)' }}>
+                Налични игри
+              </h2>
+              <p className="text-xs font-bold" style={{ color: 'var(--ink-soft)' }}>
+                Намерени {games.length}
+              </p>
             </div>
-            <button
-              onClick={fetchGames}
-              disabled={loading}
-              className="px-3 py-1 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              {loading ? '⟳' : '🔄'} Презареди
+            <button onClick={fetchGames} disabled={loading} className="btn btn--grape btn--sm">
+              <span className={loading ? 'inline-block anim-spin-slow' : 'inline-block'} aria-hidden="true">
+                ⟳
+              </span>
+              Презареди
             </button>
           </div>
 
           {loading ? (
-            <div className="text-center py-8 sm:py-12">
-              <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-purple-600 mx-auto mb-3 sm:mb-4"></div>
-              <p className="text-gray-600 text-sm sm:text-base">Зареждане на наличните игри...</p>
+            <div className="text-center py-12">
+              <div
+                className="w-12 h-12 mx-auto mb-4 rounded-full border-4 anim-spin-slow"
+                style={{ borderColor: '#e7e1ff', borderTopColor: 'var(--grape)' }}
+              />
+              <p className="text-sm font-bold" style={{ color: 'var(--ink-soft)' }}>
+                Зареждане на игрите...
+              </p>
             </div>
           ) : error ? (
-            <div className="text-center py-8 sm:py-12">
-              <p className="text-red-500 mb-4">Грешка при зареждане на игри: {error}</p>
-              <button
-                onClick={fetchGames}
-                className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors"
-              >
-                Опитай отново
-              </button>
+            <div className="text-center py-10 anim-pop">
+              <div className="text-4xl mb-3" aria-hidden="true">😕</div>
+              <p className="font-extrabold mb-4" style={{ color: '#e11d48' }}>{error}</p>
+              <button onClick={fetchGames} className="btn btn--grape">Опитай отново</button>
             </div>
           ) : games.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 text-gray-400">
-              <p className="mb-2">Няма налични игри</p>
-              <p className="text-xs sm:text-sm">Бъдете първи, който създаде игра!</p>
+            <div className="text-center py-12 anim-pop">
+              <div className="text-5xl mb-3 anim-bob" aria-hidden="true">🕹️</div>
+              <p className="font-extrabold mb-1" style={{ color: 'var(--ink)' }}>Няма активни игри</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--ink-soft)' }}>
+                Бъди първият, който създава!
+              </p>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-3 stagger">
               {games.map((game) => (
-                <div key={game.id} className="border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:border-purple-300 hover:shadow-lg transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg sm:text-xl font-bold text-gray-800">{game.name}</h3>
-                        <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Отворена
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                        <div className="flex items-center space-x-4">
-                          <span>👤 {game.host}</span>
-                          <span>👥 {game.playersPerTeam}/екип</span>
-                        </div>
-                        <span className="font-medium">{game.currentPlayers} играчи</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500">📚</span>
-                        <div className="flex flex-wrap gap-1">
-                          {game.categories.length > 0 ? (
-                            <>
-                              {game.categories.slice(0, 3).map((cat, idx) => (
-                                <span key={idx} className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">{cat}</span>
-                              ))}
-                              {game.categories.length > 3 && (
-                                <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">
-                                  +{game.categories.length - 3} още
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">Няма категории</span>
-                          )}
-                        </div>
-                      </div>
+                <div
+                  key={game.id}
+                  className="rounded-3xl p-4 transition-all"
+                  style={{ background: '#f7f5ff', border: '2.5px solid #e7e1ff' }}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <h3 className="font-display text-lg font-bold truncate" style={{ color: 'var(--ink)' }}>
+                        Игра #{game.id}
+                      </h3>
+                      <p className="text-xs font-bold truncate" style={{ color: 'var(--ink-soft)' }}>
+                        👑 {game.host}
+                      </p>
                     </div>
-                    <div className="ml-4">
-                      <button
-                        onClick={() => handleJoinClick(game)}
-                        className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg font-bold transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation text-sm bg-green-500 hover:bg-green-600 active:bg-green-700 text-white shadow-md hover:shadow-lg"
-                      >
-                        Присъедини се
-                      </button>
-                    </div>
+                    <span
+                      className="pill shrink-0"
+                      style={{ background: '#d1fae5', color: '#047857' }}
+                    >
+                      <span className="live-dot" /> Отворена
+                    </span>
                   </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                    <span className="pill" style={{ background: '#ede9fe', color: '#6d28d9' }}>
+                      👥 {game.currentPlayers} играчи
+                    </span>
+                    <span className="pill" style={{ background: '#ede9fe', color: '#6d28d9' }}>
+                      {game.playersPerTeam}/отбор
+                    </span>
+                    {game.categories.slice(0, 2).map((cat, idx) => (
+                      <span key={idx} className="pill" style={{ background: '#fef3c7', color: '#b45309' }}>
+                        {cat}
+                      </span>
+                    ))}
+                    {game.categories.length > 2 && (
+                      <span className="pill" style={{ background: '#fef3c7', color: '#b45309' }}>
+                        +{game.categories.length - 2}
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handleJoinClick(game)}
+                    className="btn btn--mint btn--block"
+                  >
+                    Присъедини се
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="text-center">
-          <button
-            onClick={onBack}
-            className="px-6 sm:px-8 py-2 sm:py-3 bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 font-bold rounded-xl sm:rounded-2xl transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation text-sm sm:text-base"
-          >
-            ← Връщане към Меню
-          </button>
+        <div className="text-center pb-8">
+          <button onClick={onBack} className="btn btn--ghost">← Връщане към меню</button>
         </div>
       </div>
 
       {/* Модал за въвеждане на име */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 lg:p-8 w-full max-w-sm sm:max-w-md mx-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 text-center leading-tight">
-              Присъединяване към "{selectedGame?.name}"
-            </h2>
-            <p className="text-gray-600 mb-4 sm:mb-6 text-center text-sm sm:text-base">Въведете вашето име</p>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Вашето Име</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Въведете името си..."
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-sm sm:text-base"
-                onKeyPress={(e) => e.key === 'Enter' && handleJoinGame()}
-                autoFocus
-              />
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 z-50 anim-fade"
+          style={{ background: 'rgba(23,10,60,0.6)', backdropFilter: 'blur(4px)' }}
+          onClick={closeModal}
+        >
+          <div className="card w-full max-w-sm anim-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-5">
+              <div className="text-4xl mb-2 anim-bob" aria-hidden="true">🙋</div>
+              <h2 className="font-display text-2xl font-bold" style={{ color: 'var(--ink)' }}>
+                Как се казваш?
+              </h2>
+              <p className="text-sm font-bold mt-1" style={{ color: 'var(--ink-soft)' }}>
+                Влизаш в игра #{selectedGame?.id}
+              </p>
             </div>
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-              <button
-                onClick={closeModal}
-                className="flex-1 py-2 sm:py-3 px-3 sm:px-4 bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 font-bold rounded-lg sm:rounded-xl transition-colors touch-manipulation text-sm sm:text-base"
-              >
-                Отказ
-              </button>
+
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Въведете името си..."
+              className={`field mb-5 ${username.trim() ? 'field--done' : ''}`}
+              onKeyPress={(e) => e.key === 'Enter' && handleJoinGame()}
+              autoFocus
+            />
+
+            <div className="space-y-3">
               <button
                 onClick={handleJoinGame}
                 disabled={!username.trim() || isJoining}
-                className={`flex-1 py-2 sm:py-3 px-3 sm:px-4 font-bold rounded-lg sm:rounded-xl transition-colors touch-manipulation text-sm sm:text-base ${
-                  username.trim() && !isJoining
-                    ? 'bg-green-500 hover:bg-green-600 active:bg-green-700 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                className="btn btn--mint btn--block"
               >
                 {isJoining ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Присъединяване...</span>
-                  </div>
+                  <>
+                    <span className="inline-block w-5 h-5 rounded-full border-2 border-white border-t-transparent anim-spin-slow" />
+                    Влизам...
+                  </>
                 ) : (
-                  '🚀 Присъедини се'
+                  <>🚀 Присъедини се</>
                 )}
               </button>
+              <button onClick={closeModal} className="btn btn--quiet btn--block">Отказ</button>
             </div>
           </div>
         </div>

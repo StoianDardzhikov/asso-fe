@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from './GameContext';
+import Backdrop from './Backdrop';
 import { API_BASE } from '../config';
 
 const CreateGame = ({ onBack, onGameCreated }) => {
@@ -88,112 +89,134 @@ const CreateGame = ({ onBack, onGameCreated }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 flex items-center justify-center p-3 sm:p-4 lg:p-6">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 lg:p-8 max-w-sm sm:max-w-md w-full mx-2">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #6d28d9 0%, #4f46e5 45%, #1e3a8a 100%)' }}
+    >
+      <Backdrop palette="purple" />
+
+      <div className="above card max-w-md w-full anim-pop my-6">
+
         {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Създай Игра</h1>
-          <p className="text-gray-600 text-sm sm:text-base">Настрой своята игра Асоциации</p>
+        <div className="text-center mb-7">
+          <div className="text-4xl mb-2 anim-wiggle inline-block" aria-hidden="true">✨</div>
+          <h1 className="font-display text-3xl font-bold" style={{ color: 'var(--ink)' }}>
+            Създай игра
+          </h1>
+          <p className="text-sm font-bold mt-1" style={{ color: 'var(--ink-soft)' }}>
+            Нагласи играта за твоята компания
+          </p>
         </div>
 
-        {/* Creator Name Section */}
-        <div className="mb-6 sm:mb-8">
-          <label className="block text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
-            👤 Твоето име
-          </label>
-          <input
-            type="text"
-            value={creatorName}
-            onChange={(e) => setCreatorName(e.target.value)}
-            placeholder="Въведи своето име..."
-            className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-sm sm:text-base"
-          />
-        </div>
+        <div className="space-y-6 stagger">
 
-        {/* Categories Section */}
-        <div className="mb-6 sm:mb-8">
-          <label className="block text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
-            📚 Категории
-          </label>
-          <div className="space-y-2 sm:space-y-3">
-            {categories.map((category, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={category}
-                  onChange={(e) => updateCategory(index, e.target.value)}
-                  placeholder={`Категория ${index + 1}`}
-                  className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-sm sm:text-base"
-                />
-                {categories.length > 1 && (
-                  <button
-                    onClick={() => removeCategory(index)}
-                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors touch-manipulation min-w-[40px] flex items-center justify-center"
-                  >
-                    🗑️
-                  </button>
-                )}
-              </div>
-            ))}
+          {/* Name */}
+          <div>
+            <label className="label text-left" htmlFor="creator-name">👤 Твоето име</label>
+            <input
+              id="creator-name"
+              type="text"
+              value={creatorName}
+              onChange={(e) => setCreatorName(e.target.value)}
+              placeholder="Въведи своето име..."
+              className={`field ${creatorName.trim() ? 'field--done' : ''}`}
+            />
           </div>
-          
-          {/* Add Category Button */}
-          <button
-            onClick={addCategory}
-            className="mt-2 sm:mt-3 w-full py-2 sm:py-3 px-3 sm:px-4 border-2 border-dashed border-gray-300 rounded-lg sm:rounded-xl text-gray-600 hover:border-purple-500 hover:text-purple-600 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base touch-manipulation"
-          >
-            <span className="text-lg">+</span>
-            <span>Добави категория</span>
-          </button>
+
+          {/* Categories */}
+          <div>
+            <label className="label text-left">📚 Категории</label>
+            <div className="space-y-2.5">
+              {categories.map((category, index) => (
+                <div key={index} className="flex items-center gap-2 anim-pop">
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => updateCategory(index, e.target.value)}
+                    placeholder={`Категория ${index + 1}`}
+                    className={`field ${category.trim() ? 'field--done' : ''}`}
+                  />
+                  {categories.length > 1 && (
+                    <button
+                      onClick={() => removeCategory(index)}
+                      className="icon-btn icon-btn--danger shrink-0"
+                      aria-label={`Премахни категория ${index + 1}`}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={addCategory}
+              className="mt-3 w-full py-3 px-4 rounded-2xl font-extrabold text-sm transition-all"
+              style={{
+                border: '2.5px dashed #d8d0ff',
+                color: 'var(--grape)',
+                background: 'transparent'
+              }}
+            >
+              + Добави категория
+            </button>
+          </div>
+
+          {/* Players per team */}
+          <div>
+            <label className="label text-left">👥 Играча на отбор</label>
+            <div className="stepper">
+              <button
+                onClick={() => setPlayersPerTeam((n) => Math.max(1, n - 1))}
+                disabled={playersPerTeam <= 1}
+                className="icon-btn"
+                aria-label="По-малко играчи"
+              >
+                −
+              </button>
+              <span key={playersPerTeam} className="stepper__value anim-punch">
+                {playersPerTeam}
+              </span>
+              <button
+                onClick={() => setPlayersPerTeam((n) => Math.min(10, n + 1))}
+                disabled={playersPerTeam >= 10}
+                className="icon-btn"
+                aria-label="Повече играчи"
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Players Per Team Section */}
-        <div className="mb-6 sm:mb-8">
-          <label className="block text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
-            👥 Играча на отбор
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="10"
-            value={playersPerTeam}
-            onChange={(e) => setPlayersPerTeam(parseInt(e.target.value) || 1)}
-            className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:border-purple-500 focus:outline-none transition-colors text-center text-lg sm:text-xl font-bold"
-          />
-        </div>
-
-        {/* Грешка */}
+        {/* Error */}
         {createError && (
-          <div className="mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-center">
-            <p className="text-red-600 text-sm font-medium">{createError}</p>
+          <div
+            className="mt-5 p-3 rounded-2xl text-center anim-pop"
+            style={{ background: '#fff1f2', border: '2px solid #fecdd3' }}
+          >
+            <p className="text-sm font-extrabold" style={{ color: '#e11d48' }}>{createError}</p>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="space-y-2 sm:space-y-3">
+        {/* Actions */}
+        <div className="mt-7 space-y-3">
           <button
             onClick={handleCreateGame}
             disabled={!isFormValid() || isCreating}
-            className={`w-full py-3 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation ${
-              isFormValid() && !isCreating
-                ? 'bg-green-500 hover:bg-green-600 active:bg-green-700 text-white shadow-lg hover:shadow-xl'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            className="btn btn--mint btn--lg btn--block"
           >
             {isCreating ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Създавам игра...</span>
-              </div>
+              <>
+                <span className="inline-block w-5 h-5 rounded-full border-2 border-white border-t-transparent anim-spin-slow" />
+                Създавам...
+              </>
             ) : (
-              '🚀 Създай Игра'
+              <>🚀 Създай игра</>
             )}
           </button>
-          
-          <button
-            onClick={onBack}
-            className="w-full py-2 sm:py-3 px-4 sm:px-6 rounded-xl sm:rounded-2xl text-base sm:text-lg font-medium bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 transition-all duration-200 transform hover:scale-105 active:scale-95 touch-manipulation"
-          >
+
+          <button onClick={onBack} className="btn btn--quiet btn--block">
             ← Обратно към менюто
           </button>
         </div>

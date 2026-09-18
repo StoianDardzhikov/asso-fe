@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from './GameContext';
 import useRoundTimer, { formatTime } from '../hooks/useRoundTimer';
+import Results from './Results';
 
 const Leaderboard = ({ onBack }) => {
   const {
@@ -78,6 +79,20 @@ const Leaderboard = ({ onBack }) => {
     clearUser();
     onBack();
   };
+
+  if (roundFinished) {
+    return (
+      <div className="min-h-screen px-4" style={{ backgroundColor: userTeamColor }}>
+        <Results
+          teams={teamsData}
+          stats={currentGame?.stats}
+          userName={user.name}
+          lang="bg"
+          onBack={handleLeaveGame}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

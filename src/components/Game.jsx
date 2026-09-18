@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from './GameContext';
 import { API_BASE } from '../config';
 import Confetti from './Confetti';
+import Results from './Results';
 
 const Game = ({ onBack }) => {
   const { 
@@ -388,7 +389,8 @@ useEffect(() => {
     // network freezes the game on the current word.
     try {
       const response = await fetch(
-        `${API_BASE}/game/score?gameId=${currentGame.id}&playerId=${scoringPlayerId}`,
+        `${API_BASE}/game/score?gameId=${currentGame.id}&playerId=${scoringPlayerId}` +
+          `&word=${encodeURIComponent(currentWord || '')}`,
         {
           method: 'POST',
           headers: {
@@ -431,6 +433,16 @@ useEffect(() => {
     if (availableWords.length === 0) {
         endContestantRound();
         return;
+    }
+
+    const skippedWord = currentWord;
+    const skippingPlayerId = contestants[currentContestantIndex]?.id;
+    if (currentGame?.id && skippingPlayerId !== undefined) {
+      fetch(
+        `${API_BASE}/game/skip?gameId=${currentGame.id}&playerId=${skippingPlayerId}` +
+          `&word=${encodeURIComponent(skippedWord || '')}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+      ).catch(error => console.error('Failed to record skip:', error));
     }
 
     const penalisedTime = timeLeft >= 15 ? timeLeft - 15 : 0;
@@ -526,22 +538,17 @@ useEffect(() => {
   if (gameState === 'finished') {
     return (
       <div
-        className="game-screen flex items-center justify-center p-5"
+        className="min-h-screen px-4"
         style={{ backgroundColor: hostTeamColor }}
       >
-        <div className="card max-w-sm w-full text-center anim-pop">
-          <div className="text-6xl mb-3 anim-bob" aria-hidden="true">🏆</div>
-          <h1 className="font-display text-3xl font-bold mb-2" style={{ color: 'var(--ink)' }}>
-            Game Over!
-          </h1>
-          <p className="font-bold mb-6" style={{ color: 'var(--ink-soft)' }}>
-            Thanks for playing Associations!
-          </p>
-          <button onClick={handleLeaveGame} className="btn btn--grape btn--lg btn--block">
-            Back to Menu
-          </button>
-        </div>
-        <Confetti key="finish" pieces={40} />
+        <Results
+          teams={currentGame?.teams || []}
+          stats={currentGame?.stats}
+          userName={user.name}
+          lang="en"
+          onBack={handleLeaveGame}
+          backLabel="Back to Menu"
+        />
       </div>
     );
   }

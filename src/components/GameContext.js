@@ -344,9 +344,12 @@ export const GameProvider = ({ children }) => {
 
       case 'round':
         // Countdown published by the host so every player can watch the clock.
+        // The end-of-game stats ride along, so the recap can render immediately
+        // instead of waiting for the next poll.
         setCurrentGame(prev => ({
           ...prev,
           roundState: message.roundState || prev?.roundState,
+          stats: message.stats || prev?.stats,
           teams: userRef.current.role === 'player' ? (message.teams || prev?.teams) : prev?.teams
         }));
         setLastSyncAt(Date.now());

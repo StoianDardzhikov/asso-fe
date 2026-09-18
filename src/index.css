@@ -131,6 +131,11 @@ code {
   100% { opacity: 1; transform: scale(1) rotate(0); filter: blur(0); }
 }
 
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 @keyframes spin-slow {
   to { transform: rotate(360deg); }
 }
@@ -568,6 +573,13 @@ code {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
   animation: sheen 4.5s ease-in-out infinite;
   pointer-events: none;
+}
+
+/* Score bars sweep out from the left when the results screen appears. */
+.score-bar {
+  transform-origin: left center;
+  animation: bar-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.35s;
 }
 
 .avatar {
